@@ -1,0 +1,2 @@
+# Ignorar la carpeta de dependencias del backend
+backend/node_modules

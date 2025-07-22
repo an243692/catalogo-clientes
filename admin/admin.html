@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - VAHM SHOP</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="nav-brand">
+                <i class="fas fa-shield-halved"></i>
+                <span>Panel Administrador</span>
+            </div>
+            
+        </nav>
+    </header>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" onclick="adminManager.switchTab('products')">
+            <i class="fas fa-boxes-stacked"></i>
+            Productos
+        </button>
+        <button class="tab-button" onclick="adminManager.switchTab('orders')">
+            <i class="fas fa-shopping-bag"></i>
+            Pedidos
+        </button>
+        <button class="tab-button" onclick="adminManager.switchTab('users')">
+            <i class="fas fa-users"></i>
+            Usuarios
+        </button>
+    </div>
+
+    <div class="container">
+        <!-- Products Tab -->
+        <div id="productsTab" class="tab-content active">
+            <div class="products-tab">
+                <section class="form-section">
+                    <div class="form-header">
+                        <h2 class="form-title" id="formTitle">
+                            <i class="fas fa-plus-circle"></i>
+                            Agregar Producto
+                        </h2>
+                        <button class="cancel-btn" id="cancelEdit">
+                            <i class="fas fa-times"></i>
+                            Cancelar
+                        </button>
+                    </div>
+                    
+                    <form id="productForm">
+                        <div class="form-group">
+                            <label for="productName">
+                                <i class="fas fa-tag"></i>
+                                Nombre del Producto
+                            </label>
+                            <input type="text" id="productName" placeholder="Ingresa el nombre del producto" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="productDescription">
+                                <i class="fas fa-align-left"></i>
+                                Descripción Detallada
+                            </label>
+                            <textarea id="productDescription" placeholder="Describe las características y beneficios del producto" required></textarea>
+                        </div>
+
+                        <div class="form-row-quad">
+                            <div class="form-group">
+                                <label for="productPrice">
+                                    <i class="fas fa-dollar-sign"></i>
+                                    Precio Individual
+                                </label>
+                                <input type="number" id="productPrice" step="0.01" min="0" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productWholesalePrice">
+                                    <i class="fas fa-users"></i>
+                                    Precio Mayoreo
+                                </label>
+                                <input type="number" id="productWholesalePrice" step="0.01" min="0" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productStock">
+                                    <i class="fas fa-boxes"></i>
+                                    Stock Inicial
+                                </label>
+                                <input type="number" id="productStock" min="0" placeholder="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="productCategory">
+                                    <i class="fas fa-folder"></i>
+                                    Categoría
+                                </label>
+                                <input type="text" id="productCategory" placeholder="Ej: Electrónicos, Ropa, etc." required>
+                            </div>
+                        </div>
+
+                        <!-- Enhanced Images Section -->
+                        <div class="images-section">
+                            <h3>
+                                <i class="fas fa-images"></i>
+                                Imágenes del Producto
+                            </h3>
+                            
+                            <div class="image-upload-methods">
+                                <button type="button" class="upload-method-btn active" data-method="url">
+                                    <i class="fas fa-link"></i>
+                                    Por URL
+                                </button>
+                                <button type="button" class="upload-method-btn" data-method="file">
+                                    <i class="fas fa-upload"></i>
+                                    Subir Archivos
+                                </button>
+                            </div>
+
+                            <!-- URL Upload -->
+                            <div class="upload-content active" id="urlUpload">
+                                <div class="url-input-container">
+                                    <input type="url" id="imageUrlInput" placeholder="https://ejemplo.com/imagen.jpg">
+                                    <button type="button" class="add-url-btn" onclick="adminManager.addImageFromUrl()">
+                                        <i class="fas fa-plus"></i>
+                                        Agregar
+                                    </button>
+                                </div>
+                                <small style="color: var(--text-muted); font-size: 0.75rem;">
+                                    Formatos soportados: JPG, PNG, WebP, GIF
+                                </small>
+                            </div>
+
+                            <!-- File Upload -->
+                            <div class="upload-content" id="fileUpload">
+                                <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Arrastra archivos aquí o haz clic para seleccionar</p>
+                                    <small>PNG, JPG, WebP hasta 5MB cada uno</small>
+                                </div>
+                                <input type="file" id="fileInput" multiple accept="image/*" onchange="adminManager.handleFileSelect(event)">
+                            </div>
+
+                            <!-- Images Preview -->
+                            <div class="images-preview" id="imagesPreview"></div>
+                        </div>
+
+                        <button type="submit" class="submit-btn">
+                            <i class="fas fa-save"></i>
+                            <span id="submitButtonText">Agregar Producto</span>
+                        </button>
+                    </form>
+                </section>
+
+                <section class="products-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-boxes-stacked"></i>
+                        Productos por Categoría
+                    </h2>
+                    <div class="products-grid" id="productsGrid">
+                        <div class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <h3>Cargando productos</h3>
+                            <p>Preparando el panel de administración</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Orders Tab -->
+        <div id="ordersTab" class="tab-content">
+            <section class="orders-section">
+                <h2 class="section-title">
+                    <i class="fas fa-shopping-bag"></i>
+                    Pedidos por Cliente
+                </h2>
+                <div id="ordersGrid">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Cargando pedidos</h3>
+                        <p>Obteniendo información de pedidos</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="usersTab" class="tab-content">
+            <section class="users-section">
+                <h2 class="section-title">
+                    <i class="fas fa-users"></i>
+                    Usuarios Registrados
+                </h2>
+                <div id="usersGrid">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <h3>Cargando usuarios</h3>
+                        <p>Obteniendo información de usuarios</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Enhanced thermal ticket template with complete customer information -->
+    <div id="thermalTicket" class="thermal-ticket" style="display: none;">
+        <div class="ticket-header">
+            <div class="ticket-title">VAHM SHOP</div>
+            <div class="ticket-subtitle">MAGIA PARA TUS IDEAS</div>
+            <div class="ticket-date" id="ticketDate"></div>
+        </div>
+
+        <div class="ticket-order-id" id="ticketOrderId"></div>
+
+        <div class="ticket-customer-info">
+            <div class="ticket-customer-name" id="ticketCustomerName"></div>
+            <div class="ticket-customer-details" id="ticketCustomerPhone"></div>
+            <div class="ticket-customer-details" id="ticketCustomerEmail"></div>
+        </div>
+
+        <div class="ticket-delivery-info" id="ticketDeliveryInfo"></div>
+
+        <div class="ticket-items" id="ticketItems"></div>
+
+        <div class="ticket-separator"></div>
+
+        <div class="ticket-footer">
+            <div class="ticket-total" id="ticketTotal"></div>
+            <div class="ticket-thanks">¡GRACIAS POR TU COMPRA!</div>
+            <div class="ticket-thanks">VUELVE PRONTO</div>
+            <div class="ticket-contact">WhatsApp: +52 123 456 7890</div>
+            <div class="ticket-contact">Email: info@vahmshop.com</div>
+        </div>
+    </div>
+    
+    <script type="module" src="admin.js"></script>
+
+</body>
+</html>

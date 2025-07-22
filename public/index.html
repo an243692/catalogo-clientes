@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo - VAHM SHOP</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="user.css">
+</head>
+<body>
+    <!-- Modern Header with Selanusa-inspired design -->
+    <header class="header">
+        <div class="header-container">
+            <div class="nav-brand">
+                <div class="brand-icon">
+                    <i class="fas fa-shopping-bag"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-name">VAHM SHOP</span>
+                    <span class="brand-tagline">Magia para tus ideas</span>
+                </div>
+            </div>
+            
+            <!-- Centered Search Bar -->
+            <div class="search-section">
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Busca productos, marcas y más..." class="search-input-main">
+                    <button class="search-button">
+                        <i class="fas fa-search"></i>
+                        <span class="search-text">Buscar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="header-contact">
+                <div class="contact-info">
+                    <i class="fas fa-phone"></i>
+                    <span>Contáctanos: 5627274791</span>
+                </div>
+            </div>
+
+            <!-- Auth Section -->
+            <div class="nav-links">
+                <div id="authSection">
+                    <button id="loginBtn" class="auth-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <span class="btn-text">Iniciar Sesión</span>
+                    </button>
+                </div>
+                <div id="userSection" style="display: none;">
+                    <div class="user-info">
+                        <i class="fas fa-user-check"></i>
+                        <span id="userName"></span>
+                    </div>
+                    <button id="historyBtn" class="nav-btn">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <span class="btn-text">Historial</span>
+                    </button>
+                    <button id="logoutBtn" class="nav-btn logout">
+                        <i class="fas fa-right-from-bracket"></i>
+                        <span class="btn-text">Salir</span>
+                    </button>
+                </div>
+                <button id="cartButton" class="cart-btn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" id="cartCount">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section with Modern Design -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">
+                <span class="title-line-1">Mejoramos para ti</span>
+                <span class="title-line-2">¡DESCUBRE NUESTRA VARIEDAD DE PRODUCTOS AL MEJOR PRECIO!</span>
+            </h1>
+            <div class="hero-logo">
+                <div class="logo-container">
+                    <div class="logo-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-name">VAHM SHOP</span>
+                        <span class="logo-slogan">MAGIA PARA TUS IDEAS®</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="filters">
+        <div class="filters-container">
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fas fa-filter"></i>
+                    Categoría
+                </label>
+                <select id="categoryFilter" class="filter-select">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products-section">
+        <div class="categories-container" id="categoriesContainer">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <h3>Cargando Productos</h3>
+                <p>Preparando nuestra selección premium para ti...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="product-modal">
+        <div class="product-modal-content">
+            <button class="close-modal" id="closeProductModal">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="product-modal-body">
+                <div class="product-modal-image">
+                    <div class="modal-image-carousel" id="modalImageCarousel">
+                        <div class="modal-carousel-container" id="modalCarouselContainer">
+                            <!-- Images will be inserted here -->
+                        </div>
+                        <div class="modal-carousel-indicators" id="modalCarouselIndicators">
+                            <!-- Indicators will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="product-modal-info">
+                    <div class="product-breadcrumb" id="productBreadcrumb">
+                        <span>Inicio</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="breadcrumbCategory">Categoría</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="breadcrumbProduct">Producto</span>
+                    </div>
+                    
+                    <h1 class="modal-product-name" id="modalProductName"></h1>
+                    
+                    <div class="modal-product-brand">
+                        Marca: <span id="modalProductBrand">VAHM SHOP</span>
+                    </div>
+                    
+                    <div class="modal-product-price" id="modalProductPrice"></div>
+                    
+                    <div class="modal-product-sku">
+                        SKU: <span id="modalProductSku"></span>
+                    </div>
+                    
+                    <div class="modal-product-stock" id="modalProductStock"></div>
+                    
+                    <div class="modal-product-description" id="modalProductDescription"></div>
+                    
+                    <div class="modal-product-prices">
+                        <div class="modal-price-item">
+                            <span class="modal-price-label">Precio Individual</span>
+                            <span class="modal-price-value" id="modalIndividualPrice"></span>
+                        </div>
+                        <div class="modal-price-item">
+                            <span class="modal-price-label">Precio Mayoreo (10+)</span>
+                            <span class="modal-price-value" id="modalWholesalePrice"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-quantity-section">
+                        <label>Elige la cantidad</label>
+                        <div class="modal-quantity-controls">
+                            <button class="quantity-btn" id="modalDecreaseBtn">-</button>
+                            <input type="number" class="quantity-input" id="modalQuantityInput" value="1" min="1">
+                            <button class="quantity-btn" id="modalIncreaseBtn">+</button>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-action-buttons">
+                        <button class="modal-add-cart" id="modalAddToCart">
+                            <i class="fas fa-cart-plus"></i>
+                            Agregar al carrito
+                        </button>
+                        <button class="modal-view-cart" id="modalViewCart">
+                            <i class="fas fa-shopping-cart"></i>
+                            Ver carrito
+                        </button>
+                    </div>
+                    
+                    <div class="modal-share-section">
+                        <span>Compartir:</span>
+                        <div class="share-buttons">
+                            <button class="share-btn facebook" onclick="ecommerceManager.shareProduct('facebook')">
+                                <i class="fab fa-facebook-f"></i>
+                            </button>
+                            <button class="share-btn whatsapp" onclick="ecommerceManager.shareProduct('whatsapp')">
+                                <i class="fab fa-whatsapp"></i>
+                            </button>
+                            <button class="share-btn twitter" onclick="ecommerceManager.shareProduct('twitter')">
+                                <i class="fab fa-twitter"></i>
+                            </button>
+                            <button class="share-btn link" onclick="ecommerceManager.shareProduct('link')">
+                                <i class="fas fa-link"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Modal Components (unchanged functionality) -->
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-modal-content">
+            <button class="close-modal" id="closeAuthModal">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="auth-header">
+                <h2>Bienvenido</h2>
+                <p>Accede a tu cuenta para continuar</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Iniciar Sesión</button>
+                <button class="auth-tab" data-tab="register">Registrarse</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginEmail">Correo Electrónico</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="loginEmail" placeholder="tu@email.com" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+                    </div>
+                </div>
+                <button type="submit" class="auth-submit">
+                    <span>Iniciar Sesión</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="registerName">Nombre Completo</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="registerName" placeholder="Tu nombre completo" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerPhone">Número de Teléfono</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" id="registerPhone" placeholder="Tu número de teléfono" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Correo Electrónico</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="registerEmail" placeholder="tu@email.com" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="registerPassword" placeholder="Crea una contraseña" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerLocation">Ubicación</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <input type="text" id="registerLocation" placeholder="Tu ciudad o ubicación" required>
+                    </div>
+                </div>
+                <button type="submit" class="auth-submit">
+                    <span>Crear Cuenta</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="cart-modal">
+        <div class="cart-modal-content">
+            <div class="cart-header">
+                <h2><i class="fas fa-shopping-bag"></i> Mi Carrito</h2>
+                <button class="close-modal" id="closeCartModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="wholesaleNotification" class="wholesale-notification" style="display: none;">
+                <i class="fas fa-star"></i>
+                <span>¡Actualizado a precio de mayoreo!</span>
+            </div>
+            <div id="cartItems"></div>
+            <div class="cart-summary">
+                <div class="cart-quantity-info">
+                    <span id="cartTotalItems">0 productos</span>
+                    <span id="cartPriceType" class="price-type-indicator"></span>
+                </div>
+                <div class="cart-total">
+                    <h3>Total del Pedido</h3>
+                    <div class="cart-total-amount" id="cartTotal">$0.00</div>
+                </div>
+            </div>
+            <div class="cart-actions">
+                <button class="clear-cart" id="clearCart">
+                    <i class="fas fa-trash-can"></i>
+                    Vaciar Carrito
+                </button>
+                <button class="checkout-btn" id="checkoutBtn">
+                    <i class="fab fa-whatsapp"></i>
+                    Ordenar por WhatsApp
+                </button>
+                <button id="checkout-btn" class="btn-mercadopago">Pagar con Mercado Pago</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery Modal -->
+    <div id="deliveryModal" class="delivery-modal">
+        <div class="delivery-modal-content">
+            <button class="close-modal" id="closeDeliveryModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2><i class="fas fa-truck-fast"></i> Opciones de Entrega</h2>
+            <form id="deliveryForm" class="delivery-form">
+                <div class="form-group">
+                    <label>Tipo de Entrega</label>
+                    <div class="delivery-options">
+                        <label>
+                            <input type="radio" name="deliveryType" value="pickup" checked>
+                            <span class="radio-custom"></span>
+                            Recoger en Tienda
+                        </label>
+                        <label>
+                            <input type="radio" name="deliveryType" value="delivery">
+                            <span class="radio-custom"></span>
+                            Envío a Domicilio
+                        </label>
+                    </div>
+                </div>
+                <div id="pickupFields" class="delivery-fields">
+                    <div class="form-group">
+                        <label for="pickupStore">Tienda para Recoger</label>
+                        <select id="pickupStore" required>
+                            <option value="">Selecciona una tienda</option>
+                            <option value="Tienda Centro">Tienda Las Cruces No 40, Col. Centro</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="deliveryFields" class="delivery-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="deliveryStreet">Calle</label>
+                        <input type="text" id="deliveryStreet" placeholder="Calle y número">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryCity">Ciudad</label>
+                        <input type="text" id="deliveryCity" placeholder="Ciudad">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryState">Estado</label>
+                        <input type="text" id="deliveryState" placeholder="Estado">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryZip">Código Postal</label>
+                        <input type="text" id="deliveryZip" placeholder="Código postal">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryInstructions">Instrucciones de Entrega</label>
+                        <textarea id="deliveryInstructions" placeholder="Instrucciones adicionales (opcional)"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="delivery-submit">Confirmar Entrega</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="history-modal">
+        <div class="history-modal-content">
+            <div class="history-header">
+                <h2><i class="fas fa-clock-rotate-left"></i> Historial de Pedidos</h2>
+                <button class="close-modal" id="closeHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="historyItems"></div>
+        </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="edit-order-modal">
+        <div class="edit-order-modal-content">
+            <div class="edit-order-header">
+                <h2><i class="fas fa-pen-to-square"></i> Editar Pedido</h2>
+                <button class="close-modal" id="closeEditOrderModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="edit-order-tabs">
+                <button class="edit-tab active" data-tab="currentItems">Productos Actuales</button>
+                <button class="edit-tab" data-tab="addProducts">Agregar del Catálogo</button>
+            </div>
+            <div id="currentItemsTab" class="edit-tab-content active">
+                <div id="currentOrderItems"></div>
+            </div>
+            <div id="addProductsTab" class="edit-tab-content">
+                <div class="catalog-search">
+                    <input type="text" id="catalogSearch" placeholder="Buscar productos...">
+                </div>
+                <div id="catalogProducts"></div>
+            </div>
+            <div class="edit-order-summary">
+                <div class="edit-total">
+                    <strong>Nuevo Total: <span id="editOrderTotal">$0.00</span></strong>
+                </div>
+                <div class="edit-actions">
+                    <button class="cancel-edit" id="cancelEdit">Cancelar</button>
+                    <button class="save-edit" id="saveEdit">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp Floating Button -->
+    <div class="whatsapp-float">
+        <a href="https://wa.me/525627274791?text=¡Hola!%20Me%20interesa%20conocer%20más%20sobre%20sus%20productos%20de%20VAHM%20SHOP" 
+           class="whatsapp-button" 
+           target="_blank" 
+           rel="noopener noreferrer"
+           title="Contactar por WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>VAHM SHOP</h3>
+                <p>Tu tienda de confianza con todo tipo de productos al mejor precio</p>
+            </div>
+            <div class="footer-section">
+                <h4>Enlaces</h4>
+                <ul>
+                    <li><a href="#">Inicio</a></li>
+                    <li><a href="#">Productos</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Contacto</h4>
+                <p><i class="fas fa-phone"></i> +52 56 2727 4791</p>
+                <p><i class="fas fa-envelope"></i> vhjocar@gmail.com</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2025 VAHM SHOP. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="user.js"></script>
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+</body>
+</html>
