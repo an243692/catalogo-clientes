@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
 const mercadopago = require('mercadopago');
+const admin = require('firebase-admin');
+const serviceAccount = require('./ruta/tu-archivo-firebase.json'); // Cambia la ruta a tu archivo de credenciales
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,16 +12,26 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(cors());
 
+// Inicializa Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://<tu-proyecto>.firebaseio.com" // Cambia por tu URL de Realtime Database
+});
+
 // Configura tu Access Token de Mercado Pago
 mercadopago.configure({
-  access_token: 'APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158'
+  access_token: 'TU_ACCESS_TOKEN'
 });
 
 // Endpoint para crear preferencia
 app.post('/crear-preferencia', async (req, res) => {
   try {
-    const { items } = req.body; // [{ title, quantity, unit_price }]
-    const preference = { items };
+    const { items, orderId } = req.body; // orderId es el ID del pedido en Firebase
+    const preference = {
+      items,
+      notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
+      external_reference: orderId
+    };
     const response = await mercadopago.preferences.create(preference);
     res.json({ id: response.body.id });
   } catch (error) {
@@ -33,21 +45,32 @@ app.post('/mercadopago/webhook', async (req, res) => {
     const { type, data } = req.body;
     if (type === 'payment') {
       const paymentId = data.id;
-      // Aquí podrías consultar a Mercado Pago para obtener detalles del pago
-      // const mpResponse = await axios.get(
-      //   `https://api.mercadopago.com/v1/payments/${paymentId}`,
-      //   {
-      //     headers: {
-      //       Authorization: `Bearer APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158`
-      //     }
-      //   }
-      // );
-      // const payment = mpResponse.data;
-      console.log('Pago recibido:', paymentId);
+      
+      // CONSULTAR DETALLES DEL PAGO EN MERCADO PAGO
+      const mpResponse = await axios.get(
+        `https://api.mercadopago.com/v1/payments/${paymentId}`,
+        {
+          headers: {
+            Authorization: `Bearer APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158`
+          }
+        }
+      );
+      const payment = mpResponse.data;
+      const orderId = payment.external_reference;
+
+      // ACTUALIZAR EL PEDIDO EN FIREBASE
+      await admin.database().ref(`orders/${orderId}`).update({
+        status: payment.status,
+        paymentId: paymentId,
+        completedAt: Date.now(),
+        paymentMethod: payment.payment_method_id
+      });
+
+      console.log('Pedido actualizado en Firebase:', orderId);
     }
     res.status(200).send('OK');
   } catch (error) {
-    console.error('Error en webhook de Mercado Pago:', error);
+    console.error('Error en webhook:', error);
     res.status(500).send('Error');
   }
 });
