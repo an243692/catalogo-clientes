@@ -4,7 +4,7 @@ const cors = require('cors');
 const axios = require('axios');
 const mercadopago = require('mercadopago');
 const admin = require('firebase-admin');
-const serviceAccount = require('./ruta/tu-archivo-firebase.json'); // Cambia la ruta a tu archivo de credenciales
+const serviceAccount = require('./firebase-credentials.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,7 +15,7 @@ app.use(cors());
 // Inicializa Firebase Admin
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://<tu-proyecto>.firebaseio.com" // Cambia por tu URL de Realtime Database
+  databaseURL: "https://catalogo-b6e67-default-rtdb.firebaseio.com"
 });
 
 // Configura tu Access Token de Mercado Pago
