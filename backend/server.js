@@ -7,21 +7,38 @@
   const fs = require('fs');
   const path = require('path');
   
+  // Debug: Ver qué variables de entorno están disponibles
+  console.log('=== DEBUG: Variables de entorno disponibles ===');
+  console.log('FIREBASE_CREDENTIALS existe:', !!process.env.FIREBASE_CREDENTIALS);
+  console.log('FIREBASE_CREDENTIALS_BASE64 existe:', !!process.env.FIREBASE_CREDENTIALS_BASE64);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('PORT:', process.env.PORT);
+  console.log('==============================================');
+
   // Configurar credenciales de Firebase
   let serviceAccount;
   try {
-    // Intentar usar archivo local primero (más confiable)
-    const credentialsPath = path.join(__dirname, 'firebase-credentials.json');
-    if (fs.existsSync(credentialsPath)) {
-      const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
-      serviceAccount = JSON.parse(credentialsContent);
-      console.log('Usando credenciales de Firebase desde archivo local');
+    if (process.env.FIREBASE_CREDENTIALS) {
+      // Para Render - usar variable de entorno
+      console.log('Variable FIREBASE_CREDENTIALS encontrada');
+      console.log('Longitud de FIREBASE_CREDENTIALS:', process.env.FIREBASE_CREDENTIALS.length);
+      serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+      console.log('Credenciales parseadas correctamente desde variable de entorno');
     } else {
-      throw new Error('Archivo firebase-credentials.json no encontrado');
+      // Para desarrollo local - usar archivo
+      console.log('Variable FIREBASE_CREDENTIALS no encontrada, intentando archivo local');
+      const credentialsPath = path.join(__dirname, 'firebase-credentials.json');
+      if (fs.existsSync(credentialsPath)) {
+        const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
+        serviceAccount = JSON.parse(credentialsContent);
+        console.log('Usando credenciales de Firebase desde archivo local');
+      } else {
+        throw new Error('Archivo firebase-credentials.json no encontrado');
+      }
     }
   } catch (error) {
     console.error('Error al cargar credenciales de Firebase:', error.message);
-    console.error('Asegúrate de que el archivo firebase-credentials.json esté presente en la carpeta backend');
+    console.error('Asegúrate de que FIREBASE_CREDENTIALS esté configurado en Render o que el archivo firebase-credentials.json exista localmente');
     process.exit(1);
   }
 
