@@ -10,46 +10,18 @@
   // Configurar credenciales de Firebase
   let serviceAccount;
   try {
-    if (process.env.FIREBASE_CREDENTIALS_BASE64) {
-      // Para Render - usar variable de entorno con Base64
-      console.log('Variable FIREBASE_CREDENTIALS_BASE64 encontrada');
-      try {
-        const decodedCredentials = Buffer.from(process.env.FIREBASE_CREDENTIALS_BASE64, 'base64').toString('utf8');
-        serviceAccount = JSON.parse(decodedCredentials);
-        console.log('Credenciales decodificadas y parseadas correctamente desde Base64');
-      } catch (parseError) {
-        console.error('Error al decodificar/parsear FIREBASE_CREDENTIALS_BASE64:', parseError.message);
-        throw new Error(`Error al procesar credenciales Base64: ${parseError.message}`);
-      }
-    } else if (process.env.FIREBASE_CREDENTIALS) {
-      // Fallback - usar variable de entorno directa
-      console.log('Variable FIREBASE_CREDENTIALS encontrada (fallback)');
-      console.log('Longitud de la variable:', process.env.FIREBASE_CREDENTIALS.length);
-      console.log('Primeros 100 caracteres:', process.env.FIREBASE_CREDENTIALS.substring(0, 100));
-      
-      try {
-        serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-        console.log('Credenciales parseadas correctamente desde variable de entorno');
-      } catch (parseError) {
-        console.error('Error al parsear FIREBASE_CREDENTIALS:', parseError.message);
-        console.error('Posición del error:', parseError.message.match(/position (\d+)/)?.[1] || 'desconocida');
-        throw new Error(`Error al parsear JSON de FIREBASE_CREDENTIALS: ${parseError.message}`);
-      }
+    // Intentar usar archivo local primero (más confiable)
+    const credentialsPath = path.join(__dirname, 'firebase-credentials.json');
+    if (fs.existsSync(credentialsPath)) {
+      const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
+      serviceAccount = JSON.parse(credentialsContent);
+      console.log('Usando credenciales de Firebase desde archivo local');
     } else {
-      // Para desarrollo local - usar archivo
-      console.log('Variables de entorno no encontradas, intentando archivo local');
-      const credentialsPath = path.join(__dirname, 'firebase-credentials.json');
-      if (fs.existsSync(credentialsPath)) {
-        const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
-        serviceAccount = JSON.parse(credentialsContent);
-        console.log('Usando credenciales de Firebase desde archivo local');
-      } else {
-        throw new Error('Archivo firebase-credentials.json no encontrado');
-      }
+      throw new Error('Archivo firebase-credentials.json no encontrado');
     }
   } catch (error) {
     console.error('Error al cargar credenciales de Firebase:', error.message);
-    console.error('Asegúrate de que FIREBASE_CREDENTIALS_BASE64 esté configurado en Render o que el archivo firebase-credentials.json exista localmente');
+    console.error('Asegúrate de que el archivo firebase-credentials.json esté presente en la carpeta backend');
     process.exit(1);
   }
 
