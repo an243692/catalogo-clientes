@@ -4,7 +4,7 @@ const cors = require('cors');
 const axios = require('axios');
 const mercadopago = require('mercadopago');
 const admin = require('firebase-admin');
-const serviceAccount = require('./firebase-credentials.json');
+const serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
