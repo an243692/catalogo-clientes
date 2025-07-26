@@ -4,6 +4,8 @@
   const axios = require('axios');
   const mercadopago = require('mercadopago');
   const admin = require('firebase-admin');
+  const fs = require('fs');
+  const path = require('path');
   
   // Configurar credenciales de Firebase
   let serviceAccount;
@@ -14,11 +16,18 @@
       console.log('Usando credenciales de Firebase desde variable de entorno');
     } else {
       // Para desarrollo local - usar archivo
-      serviceAccount = require('./firebase-credentials.json');
-      console.log('Usando credenciales de Firebase desde archivo local');
+      const credentialsPath = path.join(__dirname, 'firebase-credentials.json');
+      if (fs.existsSync(credentialsPath)) {
+        const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
+        serviceAccount = JSON.parse(credentialsContent);
+        console.log('Usando credenciales de Firebase desde archivo local');
+      } else {
+        throw new Error('Archivo firebase-credentials.json no encontrado');
+      }
     }
   } catch (error) {
     console.error('Error al cargar credenciales de Firebase:', error.message);
+    console.error('Asegúrate de que FIREBASE_CREDENTIALS esté configurado en Render o que el archivo firebase-credentials.json exista localmente');
     process.exit(1);
   }
 
@@ -111,4 +120,4 @@
 
   app.listen(PORT, () => {
     console.log(`Servidor escuchando en puerto ${PORT}`);
-  }); 
+  });
