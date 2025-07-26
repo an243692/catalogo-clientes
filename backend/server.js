@@ -10,9 +10,20 @@
   // Configurar credenciales de Firebase
   let serviceAccount;
   try {
-    if (process.env.FIREBASE_CREDENTIALS) {
-      // Para Render - usar variable de entorno
-      console.log('Variable FIREBASE_CREDENTIALS encontrada');
+    if (process.env.FIREBASE_CREDENTIALS_BASE64) {
+      // Para Render - usar variable de entorno con Base64
+      console.log('Variable FIREBASE_CREDENTIALS_BASE64 encontrada');
+      try {
+        const decodedCredentials = Buffer.from(process.env.FIREBASE_CREDENTIALS_BASE64, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decodedCredentials);
+        console.log('Credenciales decodificadas y parseadas correctamente desde Base64');
+      } catch (parseError) {
+        console.error('Error al decodificar/parsear FIREBASE_CREDENTIALS_BASE64:', parseError.message);
+        throw new Error(`Error al procesar credenciales Base64: ${parseError.message}`);
+      }
+    } else if (process.env.FIREBASE_CREDENTIALS) {
+      // Fallback - usar variable de entorno directa
+      console.log('Variable FIREBASE_CREDENTIALS encontrada (fallback)');
       console.log('Longitud de la variable:', process.env.FIREBASE_CREDENTIALS.length);
       console.log('Primeros 100 caracteres:', process.env.FIREBASE_CREDENTIALS.substring(0, 100));
       
@@ -26,7 +37,7 @@
       }
     } else {
       // Para desarrollo local - usar archivo
-      console.log('Variable FIREBASE_CREDENTIALS no encontrada, intentando archivo local');
+      console.log('Variables de entorno no encontradas, intentando archivo local');
       const credentialsPath = path.join(__dirname, 'firebase-credentials.json');
       if (fs.existsSync(credentialsPath)) {
         const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
@@ -38,7 +49,7 @@
     }
   } catch (error) {
     console.error('Error al cargar credenciales de Firebase:', error.message);
-    console.error('Asegúrate de que FIREBASE_CREDENTIALS esté configurado en Render o que el archivo firebase-credentials.json exista localmente');
+    console.error('Asegúrate de que FIREBASE_CREDENTIALS_BASE64 esté configurado en Render o que el archivo firebase-credentials.json exista localmente');
     process.exit(1);
   }
 
