@@ -1,4 +1,7 @@
 {
+  "name": "catalogo-backend",
+  "version": "1.0.0",
+  "description": "Backend para catálogo de clientes con Mercado Pago",
   "main": "server.js",
   "dependencies": {
     "express": "^4.17.1",
@@ -10,5 +13,8 @@
   },
   "scripts": {
     "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
