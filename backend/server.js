@@ -78,31 +78,49 @@
   // Endpoint para recibir notificaciones de Mercado Pago
   app.post('/mercadopago/webhook', async (req, res) => {
     try {
+      console.log('Webhook recibido:', JSON.stringify(req.body, null, 2));
+      
       const { type, data } = req.body;
       if (type === 'payment') {
         const paymentId = data.id;
         
-        // CONSULTAR DETALLES DEL PAGO EN MERCADO PAGO
-        const mpResponse = await axios.get(
-          `https://api.mercadopago.com/v1/payments/${paymentId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158'}`
+        // Verificar si es un pago de prueba (123456)
+        if (paymentId === '123456') {
+          console.log('Pago de prueba detectado, ignorando...');
+          res.status(200).send('OK - Test payment ignored');
+          return;
+        }
+        
+        try {
+          // CONSULTAR DETALLES DEL PAGO EN MERCADO PAGO
+          const mpResponse = await axios.get(
+            `https://api.mercadopago.com/v1/payments/${paymentId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158'}`
+              }
             }
+          );
+          const payment = mpResponse.data;
+          const orderId = payment.external_reference;
+
+          if (orderId) {
+            // ACTUALIZAR EL PEDIDO EN FIREBASE
+            await admin.database().ref(`orders/${orderId}`).update({
+              status: payment.status,
+              paymentId: paymentId,
+              completedAt: Date.now(),
+              paymentMethod: payment.payment_method_id
+            });
+
+            console.log('✅ Pedido actualizado en Firebase:', orderId, 'Status:', payment.status);
+          } else {
+            console.log('⚠️ Pago sin external_reference:', paymentId);
           }
-        );
-        const payment = mpResponse.data;
-        const orderId = payment.external_reference;
-
-        // ACTUALIZAR EL PEDIDO EN FIREBASE
-        await admin.database().ref(`orders/${orderId}`).update({
-          status: payment.status,
-          paymentId: paymentId,
-          completedAt: Date.now(),
-          paymentMethod: payment.payment_method_id
-        });
-
-        console.log('Pedido actualizado en Firebase:', orderId);
+        } catch (mpError) {
+          console.error('Error al consultar pago en Mercado Pago:', mpError.message);
+          // No fallamos el webhook por errores de consulta
+        }
       }
       res.status(200).send('OK');
     } catch (error) {
