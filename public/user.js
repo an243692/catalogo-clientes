@@ -353,13 +353,12 @@ class EcommerceManager {
 
         const categoryFilter = document.getElementById('categoryFilter');
         const searchInput = document.getElementById('searchInput');
-        const searchInputMain = document.getElementById('searchInput'); // Main search bar
+        const searchInputMain = document.getElementById('searchInput');
         const searchButton = document.querySelector('.search-button');
 
         categoryFilter.addEventListener('change', () => this.filterProducts());
         searchInput.addEventListener('input', () => this.filterProducts());
         
-        // Add functionality to main search bar
         if (searchInputMain) {
             searchInputMain.addEventListener('input', () => this.filterProducts());
         }
@@ -389,7 +388,7 @@ class EcommerceManager {
         document.getElementById('breadcrumbCategory').textContent = product.category;
         document.getElementById('breadcrumbProduct').textContent = product.name;
         document.getElementById('modalProductName').textContent = product.name;
-        document.getElementById('modalProductBrand').textContent = 'VAHM SHOP';
+        document.getElementById('modalProductBrand').textContent = 'SOFT DUCK';
         
         const individualPrice = product.price || product.individualPrice || 0;
         const wholesalePrice = product.wholesalePrice || individualPrice * 0.8;
@@ -518,7 +517,7 @@ class EcommerceManager {
         const productUrl = window.location.href;
         const productName = this.currentProduct.name;
         const productPrice = this.currentProduct.price || this.currentProduct.individualPrice || 0;
-        const text = `¡Mira este producto! ${productName} - $${productPrice.toFixed(2)} en VAHM SHOP`;
+        const text = `¡Mira este producto! ${productName} - $${productPrice.toFixed(2)} en SOFT DUCK`;
         
         let shareUrl = '';
         
@@ -534,9 +533,9 @@ class EcommerceManager {
                 break;
             case 'link':
                 navigator.clipboard.writeText(productUrl).then(() => {
-                    this.showNotification('Enlace copiado al portapapeles', 'success');
+                    this.showNotification('🎉 Enlace copiado al portapapeles', 'success');
                 }).catch(() => {
-                    this.showNotification('No se pudo copiar el enlace', 'error');
+                    this.showNotification('❌ No se pudo copiar el enlace', 'error');
                 });
                 return;
         }
@@ -551,34 +550,34 @@ class EcommerceManager {
         const password = document.getElementById('loginPassword').value;
 
         if (!email || !password) {
-            this.showNotification('Por favor completa todos los campos', 'error');
+            this.showNotification('🚫 Por favor completa todos los campos', 'error');
             return;
         }
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            this.showNotification('¡Bienvenido de vuelta!', 'success');
+            this.showNotification('🎉 ¡Bienvenido de vuelta!', 'success');
             document.getElementById('authModal').classList.remove('show');
             document.getElementById('loginForm').reset();
         } catch (error) {
             console.error('Error logging in:', error);
-            let errorMessage = 'Error al iniciar sesión';
+            let errorMessage = '❌ Error al iniciar sesión';
             
             switch (error.code) {
                 case 'auth/user-not-found':
-                    errorMessage = 'Usuario no encontrado';
+                    errorMessage = '🔍 Usuario no encontrado';
                     break;
                 case 'auth/wrong-password':
-                    errorMessage = 'Contraseña incorrecta';
+                    errorMessage = '🔐 Contraseña incorrecta';
                     break;
                 case 'auth/invalid-email':
-                    errorMessage = 'Email inválido';
+                    errorMessage = '📧 Email inválido';
                     break;
                 case 'auth/too-many-requests':
-                    errorMessage = 'Demasiados intentos. Intenta más tarde';
+                    errorMessage = '⏰ Demasiados intentos. Intenta más tarde';
                     break;
                 case 'auth/invalid-credential':
-                    errorMessage = 'Credenciales inválidas. Verifica tu email y contraseña';
+                    errorMessage = '🚫 Credenciales inválidas. Verifica tu email y contraseña';
                     break;
             }
             
@@ -594,12 +593,12 @@ class EcommerceManager {
         const location = document.getElementById('registerLocation').value.trim();
 
         if (!fullName || !phone || !email || !password || !location) {
-            this.showNotification('Por favor completa todos los campos', 'error');
+            this.showNotification('📝 Por favor completa todos los campos', 'error');
             return;
         }
 
         if (password.length < 6) {
-            this.showNotification('La contraseña debe tener al menos 6 caracteres', 'error');
+            this.showNotification('🔒 La contraseña debe tener al menos 6 caracteres', 'error');
             return;
         }
 
@@ -619,22 +618,22 @@ class EcommerceManager {
             await set(ref(realtimeDb, `users/${user.uid}`), userProfile);
             
             this.userProfile = userProfile;
-            this.showNotification('¡Cuenta creada exitosamente!', 'success');
+            this.showNotification('🎊 ¡Cuenta creada exitosamente!', 'success');
             document.getElementById('authModal').classList.remove('show');
             document.getElementById('registerForm').reset();
         } catch (error) {
             console.error('Error registering:', error);
-            let errorMessage = 'Error al crear la cuenta';
+            let errorMessage = '❌ Error al crear la cuenta';
             
             switch (error.code) {
                 case 'auth/email-already-in-use':
-                    errorMessage = 'Este email ya está registrado';
+                    errorMessage = '📧 Este email ya está registrado';
                     break;
                 case 'auth/invalid-email':
-                    errorMessage = 'Email inválido';
+                    errorMessage = '📧 Email inválido';
                     break;
                 case 'auth/weak-password':
-                    errorMessage = 'La contraseña es muy débil';
+                    errorMessage = '🔒 La contraseña es muy débil';
                     break;
             }
             
@@ -647,21 +646,21 @@ class EcommerceManager {
             await signOut(auth);
             this.cart = [];
             this.updateCartUI();
-            this.showNotification('Sesión cerrada correctamente', 'info');
+            this.showNotification('👋 Sesión cerrada correctamente', 'info');
         } catch (error) {
             console.error('Error logging out:', error);
-            this.showNotification('Error al cerrar sesión', 'error');
+            this.showNotification('❌ Error al cerrar sesión', 'error');
         }
     }
 
     showDeliveryModal() {
         if (!this.currentUser || !this.userProfile) {
-            this.showNotification('Debes iniciar sesión para realizar un pedido', 'error');
+            this.showNotification('🔐 Debes iniciar sesión para realizar un pedido', 'error');
             return;
         }
 
         if (this.cart.length === 0) {
-            this.showNotification('Tu carrito está vacío', 'error');
+            this.showNotification('🛒 Tu carrito está vacío', 'error');
             return;
         }
 
@@ -675,7 +674,7 @@ class EcommerceManager {
 
     async showHistoryModal() {
         if (!this.currentUser || !this.userProfile) {
-            this.showNotification('Debes iniciar sesión para ver tu historial de pedidos', 'error');
+            this.showNotification('🔐 Debes iniciar sesión para ver tu historial de pedidos', 'error');
             return;
         }
 
@@ -704,13 +703,13 @@ class EcommerceManager {
 
             if (userOrders.length === 0) {
                 console.log('No orders found for user:', this.currentUser.uid);
-                this.showNotification('No se encontraron pedidos para este usuario', 'info');
+                this.showNotification('📝 No se encontraron pedidos para este usuario', 'info');
             }
 
             this.renderOrderHistory(userOrders);
         } catch (error) {
             console.error('Error loading order history:', error);
-            this.showNotification(`Error al cargar el historial de pedidos: ${error.message}`, 'error');
+            this.showNotification(`❌ Error al cargar el historial de pedidos: ${error.message}`, 'error');
             this.renderOrderHistory([]);
         }
     }
@@ -721,26 +720,26 @@ class EcommerceManager {
         if (orders.length === 0) {
             historyItems.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-clock-rotate-left"></i>
-                    <h3>Sin Pedidos</h3>
-                    <p>Aún no has realizado ningún pedido.</p>
+                    <i class="fas fa-clock-rotate-left" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                    <h3>📚 Sin Pedidos</h3>
+                    <p>🛍️ Aún no has realizado ningún pedido. ¡Es hora de empezar!</p>
                 </div>
             `;
             return;
         }
 
         historyItems.innerHTML = orders.map(order => {
-            const statusText = order.status === 'completed' ? 'Completado' : order.status === 'cancelRequested' ? 'Cancelación Solicitada' : order.status === 'cancelled' ? 'Cancelado' : 'En Curso';
+            const statusText = order.status === 'completed' ? '✅ Completado' : order.status === 'cancelRequested' ? '⏳ Cancelación Solicitada' : order.status === 'cancelled' ? '❌ Cancelado' : '🔄 En Curso';
             const statusClass = order.status === 'completed' ? 'completed' : order.status === 'cancelRequested' ? 'cancel-requested' : order.status === 'cancelled' ? 'cancelled' : 'pending';
             let actionButtons = '';
             if (order.status === 'pending') {
                 actionButtons = `
                     <div class="history-item-actions">
                         <button class="action-btn edit-btn" onclick="ecommerceManager.editOrder('${order.id}')">
-                            <i class="fas fa-pen-to-square"></i> Editar
+                            <i class="fas fa-pen-to-square"></i> ✏️ Editar
                         </button>
                         <button class="action-btn cancel-btn" onclick="ecommerceManager.cancelOrder('${order.id}')">
-                            <i class="fas fa-times"></i> Cancelar
+                            <i class="fas fa-times"></i> ❌ Cancelar
                         </button>
                     </div>
                 `;
@@ -748,31 +747,34 @@ class EcommerceManager {
 
             let deliveryInfo = '';
             if (order.deliveryInfo && order.deliveryInfo.type === 'pickup') {
-                deliveryInfo = `Recoger en Tienda: ${order.deliveryInfo.store || 'No especificado'}`;
+                deliveryInfo = `🏪 Recoger en Tienda: ${order.deliveryInfo.store || 'No especificado'}`;
             } else if (order.deliveryInfo) {
-                deliveryInfo = `Envío a Domicilio: ${order.deliveryInfo.street || ''}, ${order.deliveryInfo.city || ''}, ${order.deliveryInfo.state || ''}, ${order.deliveryInfo.zip || ''}<br>Instrucciones: ${order.deliveryInfo.instructions || 'Ninguna'}`;
+                deliveryInfo = `🚛 Envío a Domicilio: ${order.deliveryInfo.street || ''}, ${order.deliveryInfo.city || ''}, ${order.deliveryInfo.state || ''}, ${order.deliveryInfo.zip || ''}<br>📝 Instrucciones: ${order.deliveryInfo.instructions || 'Ninguna'}`;
             } else {
-                deliveryInfo = 'Información de entrega no disponible';
+                deliveryInfo = '❓ Información de entrega no disponible';
             }
 
             const itemsList = order.items && order.items.length > 0 ? order.items.map(item => `
-                <li>
-                    ${item.name || 'Producto desconocido'} - Cantidad: ${item.quantity || 0} - $${(item.unitPrice || 0).toFixed(2)} c/u (${item.priceType || 'N/A'})<br>
-                    Subtotal: $${(item.totalPrice || 0).toFixed(2)}
+                <li style="margin-bottom: 0.75rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: var(--radius-lg); border-left: 4px solid var(--primary);">
+                    🛍️ <strong>${item.name || 'Producto desconocido'}</strong><br>
+                    📦 Cantidad: <strong>${item.quantity || 0}</strong> - 💰 $${(item.unitPrice || 0).toFixed(2)} c/u (${item.priceType === 'wholesale' ? '🏢 Mayoreo' : '💎 Individual'})<br>
+                    💵 Subtotal: <strong>$${(item.totalPrice || 0).toFixed(2)}</strong>
                 </li>
-            `).join('') : '<li>No hay productos en este pedido</li>';
+            `).join('') : '<li>❌ No hay productos en este pedido</li>';
 
             return `
                 <div class="history-item">
                     <div class="history-item-header">
-                        <div class="history-item-date">${order.timestamp ? new Date(order.timestamp).toLocaleString('es-ES') : 'Fecha no disponible'}</div>
+                        <div class="history-item-date">📅 ${order.timestamp ? new Date(order.timestamp).toLocaleString('es-ES') : 'Fecha no disponible'}</div>
                         <div class="history-item-status ${statusClass}">${statusText}</div>
                     </div>
                     <div class="history-item-details">
-                        <p><strong>Cliente:</strong> ${order.userInfo && order.userInfo.fullName ? order.userInfo.fullName : 'No especificado'}</p>
-                        <p><strong>Entrega:</strong> ${deliveryInfo}</p>
-                        <ul>${itemsList}</ul>
-                        <div class="history-item-total">Total: $${(order.total || 0).toFixed(2)}</div>
+                        <p><strong>👤 Cliente:</strong> ${order.userInfo && order.userInfo.fullName ? order.userInfo.fullName : 'No especificado'}</p>
+                        <p><strong>🚚 Entrega:</strong> ${deliveryInfo}</p>
+                        <ul style="list-style: none; padding: 0; margin: 1rem 0;">${itemsList}</ul>
+                        <div class="history-item-total" style="text-align: center; padding: 1rem; background: var(--bg-gradient-1); color: white; border-radius: var(--radius-lg); font-size: 1.25rem; font-weight: 800; margin-top: 1rem;">
+                            💰 Total: $${(order.total || 0).toFixed(2)}
+                        </div>
                         ${actionButtons}
                     </div>
                 </div>
@@ -781,7 +783,7 @@ class EcommerceManager {
     }
 
     async cancelOrder(orderId) {
-        if (!confirm('¿Estás seguro de que deseas cancelar este pedido? Requiere aprobación del administrador.')) {
+        if (!confirm('🤔 ¿Estás seguro de que deseas cancelar este pedido? Requiere aprobación del administrador.')) {
             return;
         }
 
@@ -791,11 +793,11 @@ class EcommerceManager {
                 status: 'cancelRequested',
                 cancelRequestedAt: Date.now()
             });
-            this.showNotification('Solicitud de cancelación enviada. Espera la aprobación del administrador.', 'info');
+            this.showNotification('📤 Solicitud de cancelación enviada. Espera la aprobación del administrador.', 'info');
             await this.loadOrderHistory();
         } catch (error) {
             console.error('Error requesting order cancellation:', error);
-            this.showNotification('Error al solicitar la cancelación del pedido', 'error');
+            this.showNotification('❌ Error al solicitar la cancelación del pedido', 'error');
         }
     }
 
@@ -805,13 +807,13 @@ class EcommerceManager {
             const snapshot = await get(orderRef);
             
             if (!snapshot.exists()) {
-                this.showNotification('Pedido no encontrado', 'error');
+                this.showNotification('❌ Pedido no encontrado', 'error');
                 return;
             }
 
             const order = snapshot.val();
             if (order.status !== 'pending') {
-                this.showNotification('No se puede editar un pedido que no está en curso', 'error');
+                this.showNotification('🚫 No se puede editar un pedido que no está en curso', 'error');
                 return;
             }
 
@@ -822,7 +824,7 @@ class EcommerceManager {
             document.getElementById('editOrderModal').classList.add('show');
         } catch (error) {
             console.error('Error loading order for edit:', error);
-            this.showNotification('Error al cargar el pedido', 'error');
+            this.showNotification('❌ Error al cargar el pedido', 'error');
         }
     }
 
@@ -838,9 +840,9 @@ class EcommerceManager {
         if (this.editingOrderItems.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-shopping-bag"></i>
-                    <h3>Sin Productos</h3>
-                    <p>No hay productos en este pedido.</p>
+                    <i class="fas fa-shopping-bag" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                    <h3>📦 Sin Productos</h3>
+                    <p>🛍️ No hay productos en este pedido.</p>
                 </div>
             `;
             return;
@@ -849,10 +851,10 @@ class EcommerceManager {
         container.innerHTML = this.editingOrderItems.map(item => `
             <div class="cart-item">
                 <div class="cart-item-info">
-                    <div class="cart-item-name">${item.name}</div>
+                    <div class="cart-item-name">🛍️ ${item.name}</div>
                     <div class="cart-item-price-info">
-                        <div class="cart-item-unit-price">$${item.unitPrice.toFixed(2)} c/u (${item.priceType})</div>
-                        <div class="cart-item-total-price">Subtotal: $${item.totalPrice.toFixed(2)}</div>
+                        <div class="cart-item-unit-price">💰 $${item.unitPrice.toFixed(2)} c/u (${item.priceType === 'wholesale' ? '🏢 Mayoreo' : '💎 Individual'})</div>
+                        <div class="cart-item-total-price">💵 Subtotal: $${item.totalPrice.toFixed(2)}</div>
                     </div>
                 </div>
                 <div class="cart-item-controls">
@@ -879,9 +881,9 @@ class EcommerceManager {
         if (filteredProducts.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-search"></i>
-                    <h3>Sin Resultados</h3>
-                    <p>No se encontraron productos.</p>
+                    <i class="fas fa-search" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                    <h3>🔍 Sin Resultados</h3>
+                    <p>🛍️ No se encontraron productos.</p>
                 </div>
             `;
             return;
@@ -894,13 +896,13 @@ class EcommerceManager {
             return `
                 <div class="catalog-product">
                     <div class="catalog-product-info">
-                        <div class="catalog-product-name">${product.name}</div>
+                        <div class="catalog-product-name">🛍️ ${product.name}</div>
                         <div class="catalog-product-price">
-                            Individual: $${individualPrice.toFixed(2)} | Mayoreo: $${wholesalePrice.toFixed(2)}
+                            💎 Individual: $${individualPrice.toFixed(2)} | 🏢 Mayoreo: $${wholesalePrice.toFixed(2)}
                         </div>
                     </div>
                     <button class="add-to-edit-btn" onclick="ecommerceManager.addToEdit('${product.id}')">
-                        <i class="fas fa-plus"></i> Agregar
+                        <i class="fas fa-plus"></i> ➕ Agregar
                     </button>
                 </div>
             `;
@@ -933,7 +935,7 @@ class EcommerceManager {
         this.updateEditOrderPricing();
         this.renderCurrentOrderItems();
         this.updateEditOrderTotal();
-        this.showNotification(`${product.name} agregado al pedido`, 'success');
+        this.showNotification(`✅ ${product.name} agregado al pedido`, 'success');
     }
 
     increaseEditQuantity(productId) {
@@ -963,7 +965,7 @@ class EcommerceManager {
         this.updateEditOrderPricing();
         this.renderCurrentOrderItems();
         this.updateEditOrderTotal();
-        this.showNotification('Producto removido del pedido', 'info');
+        this.showNotification('🗑️ Producto removido del pedido', 'info');
     }
 
     updateEditOrderPricing() {
@@ -989,7 +991,7 @@ class EcommerceManager {
 
     async saveOrderEdit() {
         if (this.editingOrderItems.length === 0) {
-            this.showNotification('No puedes guardar un pedido vacío', 'error');
+            this.showNotification('🚫 No puedes guardar un pedido vacío', 'error');
             return;
         }
 
@@ -1003,14 +1005,14 @@ class EcommerceManager {
                 editedAt: Date.now()
             });
 
-            this.showNotification('Pedido actualizado exitosamente', 'success');
+            this.showNotification('✅ Pedido actualizado exitosamente', 'success');
             document.getElementById('editOrderModal').classList.remove('show');
             this.editingOrder = null;
             this.editingOrderItems = [];
             await this.loadOrderHistory();
         } catch (error) {
             console.error('Error saving order edit:', error);
-            this.showNotification('Error al guardar los cambios', 'error');
+            this.showNotification('❌ Error al guardar los cambios', 'error');
         }
     }
 
@@ -1021,7 +1023,7 @@ class EcommerceManager {
         if (deliveryType === 'pickup') {
             const store = document.getElementById('pickupStore').value;
             if (!store) {
-                this.showNotification('Por favor selecciona una tienda', 'error');
+                this.showNotification('🏪 Por favor selecciona una tienda', 'error');
                 return;
             }
             deliveryInfo = {
@@ -1036,7 +1038,7 @@ class EcommerceManager {
             const instructions = document.getElementById('deliveryInstructions').value.trim();
 
             if (!street || !city || !state || !zip) {
-                this.showNotification('Por favor completa todos los campos de la dirección', 'error');
+                this.showNotification('🏠 Por favor completa todos los campos de la dirección', 'error');
                 return;
             }
 
@@ -1055,12 +1057,12 @@ class EcommerceManager {
 
     async checkout(deliveryInfo) {
         if (!this.currentUser || !this.userProfile) {
-            this.showNotification('Debes iniciar sesión para realizar un pedido', 'error');
+            this.showNotification('🔐 Debes iniciar sesión para realizar un pedido', 'error');
             return;
         }
 
         if (this.cart.length === 0) {
-            this.showNotification('Tu carrito está vacío', 'error');
+            this.showNotification('🛒 Tu carrito está vacío', 'error');
             return;
         }
 
@@ -1068,13 +1070,13 @@ class EcommerceManager {
         for (const item of this.cart) {
             const product = this.products.find(p => p.id === item.id);
             if (!product) {
-                this.showNotification(`Producto ${item.name} no encontrado`, 'error');
+                this.showNotification(`❌ Producto ${item.name} no encontrado`, 'error');
                 return;
             }
             
             const currentStock = product.stock || 0;
             if (currentStock < item.quantity) {
-                this.showNotification(`Stock insuficiente para ${item.name}. Stock disponible: ${currentStock}`, 'error');
+                this.showNotification(`📦 Stock insuficiente para ${item.name}. Stock disponible: ${currentStock}`, 'error');
                 return;
             }
         }
@@ -1096,7 +1098,8 @@ class EcommerceManager {
             total: total,
             timestamp: Date.now(),
             status: 'pending',
-            deliveryInfo: deliveryInfo
+            deliveryInfo: deliveryInfo,
+            paymentMethod: 'cash' // Default to cash, will be updated if paid with card
         };
 
         try {
@@ -1110,12 +1113,12 @@ class EcommerceManager {
                     const productRef = doc(db, 'products', item.id);
                     const newStock = (product.stock || 0) - item.quantity;
                     await updateDoc(productRef, {
-                        stock: Math.max(0, newStock) // Ensure stock doesn't go negative
+                        stock: Math.max(0, newStock)
                     });
                 }
             }
 
-            this.showNotification('Pedido realizado con éxito. Revisa tu historial.', 'success');
+            this.showNotification('🎉 Pedido realizado con éxito. Revisa tu historial.', 'success');
 
             // Generate WhatsApp message
             const whatsappMessage = this.generateWhatsAppMessage(orderData);
@@ -1139,39 +1142,73 @@ class EcommerceManager {
             this.renderProducts();
         } catch (error) {
             console.error('Error placing order:', error);
-            this.showNotification('Error al realizar el pedido', 'error');
+            this.showNotification('❌ Error al realizar el pedido', 'error');
+        }
+    }
+
+    // Nueva función para registrar ventas con tarjeta
+    async recordCardSale(orderData, transactionDetails) {
+        try {
+            const cardSaleRef = push(ref(realtimeDb, 'cardSales'));
+            const cardSaleData = {
+                id: cardSaleRef.key,
+                orderId: orderData.id,
+                userId: orderData.userId,
+                userInfo: orderData.userInfo,
+                items: orderData.items,
+                total: orderData.total,
+                timestamp: Date.now(),
+                transactionDetails: transactionDetails,
+                paymentMethod: 'card',
+                status: 'completed'
+            };
+
+            await set(cardSaleRef, cardSaleData);
+            
+            // También actualizar el pedido original con el método de pago
+            const orderRef = ref(realtimeDb, `orders/${orderData.id}`);
+            await update(orderRef, {
+                paymentMethod: 'card',
+                status: 'completed',
+                transactionDetails: transactionDetails,
+                paidAt: Date.now()
+            });
+
+            console.log('Card sale recorded successfully:', cardSaleData);
+        } catch (error) {
+            console.error('Error recording card sale:', error);
         }
     }
 
     generateWhatsAppMessage(orderData) {
-        let message = `*📋 NUEVO PEDIDO - VAHM SHOP*\n`;
+        let message = `*🎉 NUEVO PEDIDO - SOFT DUCK*\n`;
         message += `═══════════════════════════════\n`;
-        message += `🗓️ *Fecha:* ${new Date(orderData.timestamp).toLocaleString('es-ES')}\n`;
+        message += `📅 *Fecha:* ${new Date(orderData.timestamp).toLocaleString('es-ES')}\n`;
         message += `👤 *Cliente:* ${orderData.userInfo.fullName}\n`;
         message += `📧 *Email:* ${orderData.userInfo.email}\n`;
         message += `📱 *Teléfono:* ${orderData.userInfo.phone}\n`;
         message += `📍 *Ubicación:* ${orderData.userInfo.location}\n\n`;
         
-        message += `🛒 *PRODUCTOS SOLICITADOS:*\n`;
+        message += `🛍️ *PRODUCTOS SOLICITADOS:*\n`;
         message += `═══════════════════════════════\n`;
         
         orderData.items.forEach((item, index) => {
             message += `${index + 1}. *${item.name}*\n`;
             message += `   📦 Cantidad: ${item.quantity}\n`;
-            message += `   💰 Precio: $${item.unitPrice.toFixed(2)} (${item.priceType === 'wholesale' ? 'Mayoreo' : 'Individual'})\n`;
+            message += `   💰 Precio: $${item.unitPrice.toFixed(2)} (${item.priceType === 'wholesale' ? '🏢 Mayoreo' : '💎 Individual'})\n`;
             message += `   💵 Subtotal: $${item.totalPrice.toFixed(2)}\n`;
             message += `   ─────────────────────────\n`;
         });
         
-        message += `\n💎 *TOTAL DEL PEDIDO: $${orderData.total.toFixed(2)}*\n\n`;
+        message += `\n🎯 *TOTAL DEL PEDIDO: $${orderData.total.toFixed(2)}*\n\n`;
         
         message += `🚚 *INFORMACIÓN DE ENTREGA:*\n`;
         message += `═══════════════════════════════\n`;
         if (orderData.deliveryInfo.type === 'pickup') {
-            message += `📍 *Tipo:* Recoger en Tienda\n`;
+            message += `📍 *Tipo:* 🏪 Recoger en Tienda\n`;
             message += `🏪 *Tienda:* ${orderData.deliveryInfo.store}\n`;
         } else {
-            message += `🚛 *Tipo:* Envío a Domicilio\n`;
+            message += `🚛 *Tipo:* 🏠 Envío a Domicilio\n`;
             message += `🏠 *Dirección:* ${orderData.deliveryInfo.street}\n`;
             message += `🌆 *Ciudad:* ${orderData.deliveryInfo.city}\n`;
             message += `🏙️ *Estado:* ${orderData.deliveryInfo.state}\n`;
@@ -1184,7 +1221,7 @@ class EcommerceManager {
         message += `\n🆔 *ID del Pedido:* ${orderData.id}\n`;
         message += `═══════════════════════════════\n`;
         message += `✅ *Por favor confirma la recepción de este pedido*\n`;
-        message += `🙏 ¡Gracias por elegir VAHM SHOP!`;
+        message += `🦆 ¡Gracias por elegir SOFT DUCK!`;
 
         return message;
     }
@@ -1210,7 +1247,7 @@ class EcommerceManager {
             this.filteredProducts = [...this.products];
         } catch (error) {
             console.error('Error loading products:', error);
-            this.showError('Error al cargar los productos');
+            this.showError('❌ Error al cargar los productos');
         }
     }
 
@@ -1218,12 +1255,12 @@ class EcommerceManager {
         const categoryFilter = document.getElementById('categoryFilter');
         const currentValue = categoryFilter.value;
         
-        categoryFilter.innerHTML = '<option value="">Todas las categorías</option>';
+        categoryFilter.innerHTML = '<option value="">🌟 Todas las categorías</option>';
         
         this.categories.forEach((products, category) => {
             const option = document.createElement('option');
             option.value = category;
-            option.textContent = category;
+            option.textContent = `🏷️ ${category}`;
             categoryFilter.appendChild(option);
         });
         
@@ -1256,9 +1293,9 @@ class EcommerceManager {
     }
 
     getStockStatusText(stock) {
-        if (stock === 0) return 'Sin Stock';
-        if (stock <= 5) return `Stock Bajo (${stock})`;
-        return `En Stock (${stock})`;
+        if (stock === 0) return '❌ Sin Stock';
+        if (stock <= 5) return `⚠️ Stock Bajo (${stock})`;
+        return `✅ En Stock (${stock})`;
     }
 
     renderProducts() {
@@ -1271,17 +1308,17 @@ class EcommerceManager {
             if (this.products.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <i class="fas fa-box-open"></i>
-                        <h3>Catálogo en Preparación</h3>
-                        <p>Nuestros productos premium estarán disponibles muy pronto.</p>
+                        <i class="fas fa-box-open" style="font-size: 4rem; color: var(--primary); margin-bottom: 1.5rem;"></i>
+                        <h3>🎨 Catálogo en Preparación</h3>
+                        <p>✨ Nuestros productos premium estarán disponibles muy pronto. ¡Mantente atento!</p>
                     </div>
                 `;
             } else {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h3>Sin Resultados</h3>
-                        <p>No encontramos productos que coincidan con tu búsqueda.</p>
+                        <i class="fas fa-search" style="font-size: 4rem; color: var(--primary); margin-bottom: 1.5rem;"></i>
+                        <h3>🔍 Sin Resultados</h3>
+                        <p>🛍️ No encontramos productos que coincidan con tu búsqueda. ¡Intenta con otros términos!</p>
                     </div>
                 `;
             }
@@ -1336,7 +1373,7 @@ class EcommerceManager {
                                 <i class="fas fa-tag"></i>
                                 ${product.category}
                             </div>
-                            <h3 class="product-name">${product.name}</h3>
+                            <h3 class="product-name">🛍️ ${product.name}</h3>
                             <div class="product-description">
                                 ${this.formatDescription(product.description)}
                             </div>
@@ -1346,17 +1383,17 @@ class EcommerceManager {
                             </div>
                             <div class="product-prices">
                                 <div class="price-item price-individual">
-                                    <span class="price-label">Individual</span>
+                                    <span class="price-label">💎 Individual</span>
                                     <span class="price-value">$${parseFloat(individualPrice).toFixed(2)}</span>
                                 </div>
                                 <div class="price-item price-wholesale">
-                                    <span class="price-label">Mayoreo (10+)</span>
+                                    <span class="price-label">🏢 Mayoreo (10+)</span>
                                     <span class="price-value">$${parseFloat(wholesalePrice).toFixed(2)}</span>
                                 </div>
                             </div>
                             <button class="add-to-cart ${stock === 0 ? 'disabled' : ''}" onclick="event.stopPropagation(); ecommerceManager.addToCart('${product.id}')" ${stock === 0 ? 'disabled' : ''}>
                                 <i class="fas fa-${stock === 0 ? 'times-circle' : 'cart-plus'}"></i>
-                                ${stock === 0 ? 'Sin Stock' : 'Agregar al Carrito'}
+                                ${stock === 0 ? '❌ Sin Stock' : '🛒 Agregar al Carrito'}
                             </button>
                         </div>
                     </div>
@@ -1366,7 +1403,7 @@ class EcommerceManager {
             return `
                 <div class="category-section">
                     <div class="category-header">
-                        <h2 class="category-title">${category}</h2>
+                        <h2 class="category-title">🏷️ ${category}</h2>
                         <div class="category-divider"></div>
                     </div>
                     <div class="products-grid">
@@ -1448,7 +1485,7 @@ class EcommerceManager {
         // Check if product has stock
         const stock = product.stock || 0;
         if (stock === 0) {
-            this.showNotification('Este producto no tiene stock disponible. Elige otro producto.', 'error');
+            this.showNotification('❌ Este producto no tiene stock disponible. Elige otro producto.', 'error');
             return;
         }
 
@@ -1457,7 +1494,7 @@ class EcommerceManager {
         const currentQuantityInCart = cartItem ? cartItem.quantity : 0;
         
         if (currentQuantityInCart >= stock) {
-            this.showNotification(`Stock insuficiente. Solo quedan ${stock} unidades disponibles.`, 'error');
+            this.showNotification(`📦 Stock insuficiente. Solo quedan ${stock} unidades disponibles.`, 'error');
             return;
         }
 
@@ -1477,7 +1514,7 @@ class EcommerceManager {
 
         this.updateCartPricing();
         this.updateCartUI();
-        this.showNotification(`${product.name} agregado al carrito`, 'success');
+        this.showNotification(`✅ ${product.name} agregado al carrito`, 'success');
     }
 
     addToCartWithQuantity(productId, quantity) {
@@ -1487,7 +1524,7 @@ class EcommerceManager {
         // Check if product has stock
         const stock = product.stock || 0;
         if (stock === 0) {
-            this.showNotification('Este producto no tiene stock disponible.', 'error');
+            this.showNotification('❌ Este producto no tiene stock disponible.', 'error');
             return;
         }
 
@@ -1496,7 +1533,7 @@ class EcommerceManager {
         const currentQuantityInCart = cartItem ? cartItem.quantity : 0;
         
         if (currentQuantityInCart + quantity > stock) {
-            this.showNotification(`Stock insuficiente. Solo quedan ${stock} unidades disponibles.`, 'error');
+            this.showNotification(`📦 Stock insuficiente. Solo quedan ${stock} unidades disponibles.`, 'error');
             return;
         }
 
@@ -1516,7 +1553,7 @@ class EcommerceManager {
 
         this.updateCartPricing();
         this.updateCartUI();
-        this.showNotification(`${quantity} ${product.name} agregado(s) al carrito`, 'success');
+        this.showNotification(`🎉 ${quantity} ${product.name} agregado(s) al carrito`, 'success');
     }
 
     increaseQuantity(productId) {
@@ -1526,7 +1563,7 @@ class EcommerceManager {
         if (item && product) {
             const stock = product.stock || 0;
             if (item.quantity >= stock) {
-                this.showNotification(`Stock insuficiente. Solo quedan ${stock} unidades disponibles.`, 'error');
+                this.showNotification(`📦 Stock insuficiente. Solo quedan ${stock} unidades disponibles.`, 'error');
                 return;
             }
             
@@ -1551,20 +1588,20 @@ class EcommerceManager {
         this.cart = this.cart.filter(item => item.id !== productId);
         this.updateCartPricing();
         this.updateCartUI();
-        this.showNotification('Producto removido del carrito', 'info');
+        this.showNotification('🗑️ Producto removido del carrito', 'info');
     }
 
     clearCart() {
         if (this.cart.length === 0) {
-            this.showNotification('El carrito ya está vacío', 'info');
+            this.showNotification('🛒 El carrito ya está vacío', 'info');
             return;
         }
-        if (!confirm('¿Estás seguro de que deseas vaciar el carrito?')) {
+        if (!confirm('🤔 ¿Estás seguro de que deseas vaciar el carrito?')) {
             return;
         }
         this.cart = [];
         this.updateCartUI();
-        this.showNotification('Carrito vaciado', 'success');
+        this.showNotification('🧹 Carrito vaciado', 'success');
     }
 
     updateCartPricing() {
@@ -1608,19 +1645,19 @@ class EcommerceManager {
 
         // Update price type indicator
         if (totalQuantity >= 10) {
-            cartPriceType.textContent = 'PRECIO DE MAYOREO';
+            cartPriceType.textContent = '🏢 PRECIO DE MAYOREO';
             cartPriceType.className = 'price-type-indicator wholesale';
         } else {
-            cartPriceType.textContent = 'PRECIO INDIVIDUAL';
+            cartPriceType.textContent = '💎 PRECIO INDIVIDUAL';
             cartPriceType.className = 'price-type-indicator individual';
         }
 
         if (this.cart.length === 0) {
             cartItems.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-shopping-bag"></i>
-                    <h3>Carrito Vacío</h3>
-                    <p>Agrega productos desde el catálogo.</p>
+                    <i class="fas fa-shopping-bag" style="font-size: 4rem; color: var(--primary); margin-bottom: 1.5rem;"></i>
+                    <h3>🛒 Carrito Vacío</h3>
+                    <p>✨ Agrega productos desde el catálogo para comenzar tu experiencia de compra.</p>
                 </div>
             `;
             cartTotal.textContent = '$0.00';
@@ -1632,10 +1669,10 @@ class EcommerceManager {
                 return `
                     <div class="cart-item">
                         <div class="cart-item-info">
-                            <div class="cart-item-name">${item.name}</div>
+                            <div class="cart-item-name">🛍️ ${item.name}</div>
                             <div class="cart-item-price-info">
-                                <div class="cart-item-unit-price">$${item.unitPrice.toFixed(2)} c/u (${item.priceType})</div>
-                                <div class="cart-item-total-price">Subtotal: $${item.totalPrice.toFixed(2)}</div>
+                                <div class="cart-item-unit-price">💰 $${item.unitPrice.toFixed(2)} c/u (${item.priceType === 'wholesale' ? '🏢 Mayoreo' : '💎 Individual'})</div>
+                                <div class="cart-item-total-price">💵 Subtotal: $${item.totalPrice.toFixed(2)}</div>
                             </div>
                         </div>
                         <div class="cart-item-controls">
@@ -1677,11 +1714,12 @@ class EcommerceManager {
     }
 }
 
-const mp = new MercadoPago('APP_USR-bf8415ba-a2b4-4473-8174-8c836488c5af', { locale: 'es-MX' });
+// Mercado Pago - Usando el mismo token que el backend
+const mp = new MercadoPago('APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158', { locale: 'es-MX' });
 
 async function pagarConMercadoPago(carrito) {
   if (carrito.length === 0) {
-    ecommerceManager.showNotification('Tu carrito está vacío', 'error');
+    ecommerceManager.showNotification('🛒 Tu carrito está vacío', 'error');
     return;
   }
 
@@ -1694,7 +1732,7 @@ async function pagarConMercadoPago(carrito) {
 
   try {
     // Llama a tu backend para crear la preferencia
-    const res = await fetch('https://tu-backend.onrender.com/crear-preferencia', {
+    const res = await fetch('https://catalogo-clientes-0ido.onrender.com/crear-preferencia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items })
@@ -1702,26 +1740,64 @@ async function pagarConMercadoPago(carrito) {
 
     if (!res.ok) {
         console.error('Error al crear la preferencia:', await res.text());
-        ecommerceManager.showNotification('Error al crear la preferencia de pago', 'error');
+        ecommerceManager.showNotification('❌ Error al crear la preferencia de pago', 'error');
         return;
     }
 
     const data = await res.json();
     
     if (data.id) {
+        // Antes de abrir el checkout, preparar los datos para posible registro de venta con tarjeta
+        const total = carrito.reduce((sum, item) => sum + item.totalPrice, 0);
+        const orderData = {
+            id: 'temp_' + Date.now(), // ID temporal
+            userId: ecommerceManager.currentUser?.uid,
+            userInfo: ecommerceManager.userProfile,
+            items: carrito,
+            total: total,
+            timestamp: Date.now(),
+            status: 'pending',
+            paymentMethod: 'card'
+        };
+
         // Abre el checkout de Mercado Pago
         mp.checkout({
             preference: { id: data.id },
             autoOpen: true,
+            onSuccess: function(result) {
+                // Aquí registramos la venta exitosa con tarjeta
+                const transactionDetails = {
+                    preferenceId: data.id,
+                    paymentId: result.payment?.id,
+                    status: result.status,
+                    paymentType: result.payment?.payment_type_id || 'card',
+                    merchant_order_id: result.merchant_order_id
+                };
+                
+                // Registrar en la sección de ventas con tarjeta
+                ecommerceManager.recordCardSale(orderData, transactionDetails);
+                
+                // Limpiar carrito y mostrar éxito
+                ecommerceManager.cart = [];
+                ecommerceManager.updateCartUI();
+                ecommerceManager.showNotification('🎉 ¡Pago exitoso! Tu pedido ha sido procesado.', 'success');
+            },
+            onFailure: function(result) {
+                console.error('Payment failed:', result);
+                ecommerceManager.showNotification('❌ Error en el pago. Intenta nuevamente.', 'error');
+            },
+            onPending: function(result) {
+                ecommerceManager.showNotification('⏳ Pago pendiente. Te notificaremos cuando se confirme.', 'info');
+            }
         });
     } else {
         console.error('No se recibió el ID de preferencia');
-        ecommerceManager.showNotification('No se pudo iniciar el pago', 'error');
+        ecommerceManager.showNotification('❌ No se pudo iniciar el pago', 'error');
     }
 
   } catch (error) {
       console.error('Error en pagarConMercadoPago:', error);
-      ecommerceManager.showNotification('Error de conexión al iniciar el pago', 'error');
+      ecommerceManager.showNotification('❌ Error de conexión al iniciar el pago', 'error');
   }
 }
 
