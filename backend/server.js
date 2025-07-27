@@ -59,12 +59,13 @@
     access_token: process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158'
   });
 
-  // Endpoint para crear preferencia
+    // Endpoint para crear preferencia
   app.post('/crear-preferencia', async (req, res) => {
     try {
-      const { items, orderId } = req.body;
+      const { items, orderId, payer, statement_descriptor } = req.body;
       console.log('🛒 Creando preferencia para pedido:', orderId);
       console.log('📦 Items:', JSON.stringify(items, null, 2));
+      console.log('👤 Payer:', JSON.stringify(payer, null, 2));
       
       // Validar que items exista y tenga al menos un elemento
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -81,23 +82,32 @@
         }
       }
       
-              const preference = {
-          items: items.map(item => ({
-            title: item.title,
-            quantity: parseInt(item.quantity),
-            unit_price: parseFloat(item.unit_price)
-          })),
-          notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
-          external_reference: orderId || `order_${Date.now()}`,
-          back_urls: {
-            success: "https://catalogo-clientes-0ido.onrender.com/success",
-            failure: "https://catalogo-clientes-0ido.onrender.com/failure",
-            pending: "https://catalogo-clientes-0ido.onrender.com/pending"
-          },
-          auto_return: "approved",
-          expires: true,
-          expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().replace('Z', '-03:00')
-        };
+      const preference = {
+        items: items.map(item => ({
+          id: item.id || `item_${Date.now()}_${Math.random()}`,
+          title: item.title,
+          quantity: parseInt(item.quantity),
+          unit_price: parseFloat(item.unit_price),
+          description: item.description || `Producto de SOFT DUCK - ${item.title}`,
+          category_id: item.category_id || 'others'
+        })),
+        payer: payer ? {
+          email: payer.email,
+          first_name: payer.first_name,
+          last_name: payer.last_name
+        } : undefined,
+        statement_descriptor: statement_descriptor || 'SOFT DUCK',
+        notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
+        external_reference: orderId || `order_${Date.now()}`,
+        back_urls: {
+          success: "https://catalogo-clientes-0ido.onrender.com/success",
+          failure: "https://catalogo-clientes-0ido.onrender.com/failure",
+          pending: "https://catalogo-clientes-0ido.onrender.com/pending"
+        },
+        auto_return: "approved",
+        expires: true,
+        expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().replace('Z', '-03:00')
+      };
       
       console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
       
