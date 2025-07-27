@@ -1714,8 +1714,8 @@ class EcommerceManager {
     }
 }
 
-// Mercado Pago - Usando el mismo token que el backend
-const mp = new MercadoPago('APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158', { locale: 'es-MX' });
+// Mercado Pago - Usando el Public Key (seguro para frontend)
+const mp = new MercadoPago('APP_USR-bf8415ba-a2b4-4473-8174-8c836488c5af', { locale: 'es-MX' });
 
 async function pagarConMercadoPago(carrito) {
   if (carrito.length === 0) {
@@ -1723,19 +1723,38 @@ async function pagarConMercadoPago(carrito) {
     return;
   }
 
-  // Prepara los items en el formato de Mercado Pago
-  const items = carrito.map(item => ({
-    title: item.name,
-    quantity: item.quantity,
-    unit_price: item.unitPrice
-  }));
+  // Crear el pedido primero en Firebase
+  const total = carrito.reduce((sum, item) => sum + item.totalPrice, 0);
+  const orderRef = push(ref(realtimeDb, 'orders'));
+  const orderId = `order_${orderRef.key}`;
+
+  const orderData = {
+    id: orderId,
+    userId: ecommerceManager.currentUser?.uid,
+    userInfo: ecommerceManager.userProfile,
+    items: carrito,
+    total: total,
+    timestamp: Date.now(),
+    status: 'pending',
+    paymentMethod: 'card'
+  };
 
   try {
+    // Guardar el pedido en Firebase
+    await set(orderRef, orderData);
+
+    // Prepara los items en el formato de Mercado Pago
+    const items = carrito.map(item => ({
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice
+    }));
+
     // Llama a tu backend para crear la preferencia
     const res = await fetch('https://catalogo-clientes-0ido.onrender.com/crear-preferencia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items })
+      body: JSON.stringify({ items, orderId })
     });
 
     if (!res.ok) {
@@ -1747,46 +1766,37 @@ async function pagarConMercadoPago(carrito) {
     const data = await res.json();
     
     if (data.id) {
-        // Antes de abrir el checkout, preparar los datos para posible registro de venta con tarjeta
-        const total = carrito.reduce((sum, item) => sum + item.totalPrice, 0);
-        const orderData = {
-            id: 'temp_' + Date.now(), // ID temporal
-            userId: ecommerceManager.currentUser?.uid,
-            userInfo: ecommerceManager.userProfile,
-            items: carrito,
-            total: total,
-            timestamp: Date.now(),
-            status: 'pending',
-            paymentMethod: 'card'
-        };
-
         // Abre el checkout de Mercado Pago
         mp.checkout({
             preference: { id: data.id },
             autoOpen: true,
             onSuccess: function(result) {
-                // Aquí registramos la venta exitosa con tarjeta
-                const transactionDetails = {
-                    preferenceId: data.id,
-                    paymentId: result.payment?.id,
-                    status: result.status,
-                    paymentType: result.payment?.payment_type_id || 'card',
-                    merchant_order_id: result.merchant_order_id
-                };
-                
-                // Registrar en la sección de ventas con tarjeta
-                ecommerceManager.recordCardSale(orderData, transactionDetails);
-                
-                // Limpiar carrito y mostrar éxito
+                console.log('🎉 Pago exitoso:', result);
+                // El webhook del backend se encargará de actualizar el pedido
+                // Aquí solo limpiamos el carrito y mostramos éxito
                 ecommerceManager.cart = [];
                 ecommerceManager.updateCartUI();
                 ecommerceManager.showNotification('🎉 ¡Pago exitoso! Tu pedido ha sido procesado.', 'success');
             },
             onFailure: function(result) {
-                console.error('Payment failed:', result);
-                ecommerceManager.showNotification('❌ Error en el pago. Intenta nuevamente.', 'error');
+                console.error('❌ Pago fallido:', result);
+                let errorMessage = '❌ Error en el pago. ';
+                
+                // Proporcionar mensajes más específicos
+                if (result.status === 'rejected') {
+                    errorMessage += 'El pago fue rechazado. Verifica los datos de tu tarjeta.';
+                } else if (result.status === 'cancelled') {
+                    errorMessage += 'El pago fue cancelado.';
+                } else if (result.status === 'in_process') {
+                    errorMessage += 'El pago está siendo procesado.';
+                } else {
+                    errorMessage += 'Intenta nuevamente o contacta soporte.';
+                }
+                
+                ecommerceManager.showNotification(errorMessage, 'error');
             },
             onPending: function(result) {
+                console.log('⏳ Pago pendiente:', result);
                 ecommerceManager.showNotification('⏳ Pago pendiente. Te notificaremos cuando se confirme.', 'info');
             }
         });
