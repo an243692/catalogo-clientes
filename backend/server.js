@@ -62,31 +62,42 @@
   // Endpoint para crear preferencia
   app.post('/crear-preferencia', async (req, res) => {
     try {
-      const { items, orderId } = req.body; // orderId es el ID del pedido en Firebase
+      const { items, orderId } = req.body;
       console.log('🛒 Creando preferencia para pedido:', orderId);
       console.log('📦 Items:', JSON.stringify(items, null, 2));
       
-      const preference = {
-        items,
-        notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
-        external_reference: orderId,
-        // Configuración adicional para tarjetas
-        payment_methods: {
-          excluded_payment_types: [],
-          excluded_payment_methods: [],
-          installments: 12, // Permitir hasta 12 cuotas
-          default_installments: 1
-        },
-        // Configuración de back_urls para mejor UX
-        back_urls: {
-          success: "https://catalogo-clientes-0ido.onrender.com/success",
-          failure: "https://catalogo-clientes-0ido.onrender.com/failure",
-          pending: "https://catalogo-clientes-0ido.onrender.com/pending"
-        },
-        auto_return: "approved",
-        expires: true,
-        expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 horas
-      };
+      // Validar que items exista y tenga al menos un elemento
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items es requerido y debe ser un array no vacío' });
+      }
+      
+      // Validar que cada item tenga los campos requeridos
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item.title || !item.quantity || !item.unit_price) {
+          return res.status(400).json({ 
+            error: `Item ${i} debe tener title, quantity y unit_price` 
+          });
+        }
+      }
+      
+              const preference = {
+          items: items.map(item => ({
+            title: item.title,
+            quantity: parseInt(item.quantity),
+            unit_price: parseFloat(item.unit_price)
+          })),
+          notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
+          external_reference: orderId || `order_${Date.now()}`,
+          back_urls: {
+            success: "https://catalogo-clientes-0ido.onrender.com/success",
+            failure: "https://catalogo-clientes-0ido.onrender.com/failure",
+            pending: "https://catalogo-clientes-0ido.onrender.com/pending"
+          },
+          auto_return: "approved",
+          expires: true,
+          expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().replace('Z', '-03:00')
+        };
       
       console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
       
@@ -95,8 +106,15 @@
       res.json({ id: response.body.id });
     } catch (error) {
       console.error('❌ Error al crear preferencia:', error.message);
-      console.error('🔍 Detalles del error:', error.response?.data);
-      res.status(500).json({ error: error.message });
+      if (error.response && error.response.data) {
+        console.error('🔍 Detalles del error:', JSON.stringify(error.response.data, null, 2));
+        res.status(500).json({ 
+          error: error.message, 
+          details: error.response.data 
+        });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 
