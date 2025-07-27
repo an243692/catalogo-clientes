@@ -1750,11 +1750,33 @@ async function pagarConMercadoPago(carrito) {
       unit_price: item.unitPrice
     }));
 
+    // Prepara los datos del comprador
+    const payer = {
+      email: ecommerceManager.userProfile?.email || 'cliente@softduck.com',
+      first_name: ecommerceManager.userProfile?.fullName?.split(' ')[0] || 'Cliente',
+      last_name: ecommerceManager.userProfile?.fullName?.split(' ').slice(1).join(' ') || 'Soft Duck'
+    };
+
+    // Prepara los items con más detalles
+    const itemsWithDetails = carrito.map(item => ({
+      id: item.id,
+      title: item.name,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      description: `Producto de SOFT DUCK - ${item.name}`,
+      category_id: 'others' // Categoría por defecto
+    }));
+
     // Llama a tu backend para crear la preferencia
     const res = await fetch('https://catalogo-clientes-0ido.onrender.com/crear-preferencia', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, orderId })
+      body: JSON.stringify({ 
+        items: itemsWithDetails, 
+        orderId,
+        payer,
+        statement_descriptor: 'SOFT DUCK'
+      })
     });
 
     if (!res.ok) {
