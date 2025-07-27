@@ -63,35 +63,79 @@
   app.post('/crear-preferencia', async (req, res) => {
     try {
       const { items, orderId } = req.body; // orderId es el ID del pedido en Firebase
+      console.log('🛒 Creando preferencia para pedido:', orderId);
+      console.log('📦 Items:', JSON.stringify(items, null, 2));
+      
       const preference = {
         items,
         notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
-        external_reference: orderId
+        external_reference: orderId,
+        // Configuración adicional para tarjetas
+        payment_methods: {
+          excluded_payment_types: [],
+          excluded_payment_methods: [],
+          installments: 12, // Permitir hasta 12 cuotas
+          default_installments: 1
+        },
+        // Configuración de back_urls para mejor UX
+        back_urls: {
+          success: "https://catalogo-clientes-0ido.onrender.com/success",
+          failure: "https://catalogo-clientes-0ido.onrender.com/failure",
+          pending: "https://catalogo-clientes-0ido.onrender.com/pending"
+        },
+        auto_return: "approved",
+        expires: true,
+        expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 horas
       };
+      
+      console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
+      
       const response = await mercadopago.preferences.create(preference);
+      console.log('✅ Preferencia creada exitosamente:', response.body.id);
       res.json({ id: response.body.id });
     } catch (error) {
+      console.error('❌ Error al crear preferencia:', error.message);
+      console.error('🔍 Detalles del error:', error.response?.data);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Endpoint GET para verificar que el webhook existe
+  app.get('/mercadopago/webhook', (req, res) => {
+    console.log('🔍 GET request al webhook recibido');
+    res.status(200).json({
+      message: 'Webhook endpoint disponible',
+      timestamp: new Date().toISOString(),
+      method: 'GET'
+    });
   });
 
   // Endpoint para recibir notificaciones de Mercado Pago
   app.post('/mercadopago/webhook', async (req, res) => {
     try {
-      console.log('Webhook recibido:', JSON.stringify(req.body, null, 2));
+      console.log('🔔 Webhook POST recibido:', JSON.stringify(req.body, null, 2));
+      console.log('📋 Headers recibidos:', JSON.stringify(req.headers, null, 2));
       
-      const { type, data } = req.body;
-      if (type === 'payment') {
+      const { type, data, resource, topic } = req.body;
+      console.log('📝 Tipo de notificación:', type);
+      console.log('📊 Datos recibidos:', data);
+      console.log('🔗 Resource:', resource);
+      console.log('📌 Topic:', topic);
+      
+      // Solo procesar pagos de nuestra aplicación (no de Mercado Libre)
+      if (type === 'payment' && data && data.id) {
         const paymentId = data.id;
+        console.log('💰 ID del pago:', paymentId);
         
         // Verificar si es un pago de prueba (123456)
         if (paymentId === '123456') {
-          console.log('Pago de prueba detectado, ignorando...');
+          console.log('🧪 Pago de prueba detectado, ignorando...');
           res.status(200).send('OK - Test payment ignored');
           return;
         }
         
         try {
+          console.log('🔍 Consultando detalles del pago en Mercado Pago...');
           // CONSULTAR DETALLES DEL PAGO EN MERCADO PAGO
           const mpResponse = await axios.get(
             `https://api.mercadopago.com/v1/payments/${paymentId}`,
@@ -102,9 +146,13 @@
             }
           );
           const payment = mpResponse.data;
+          console.log('📄 Detalles del pago:', JSON.stringify(payment, null, 2));
+          
           const orderId = payment.external_reference;
+          console.log('🆔 ID del pedido (external_reference):', orderId);
 
-          if (orderId) {
+          if (orderId && orderId.startsWith('test_') || orderId.startsWith('order_')) {
+            console.log('🔄 Actualizando pedido en Firebase...');
             // ACTUALIZAR EL PEDIDO EN FIREBASE
             await admin.database().ref(`orders/${orderId}`).update({
               status: payment.status,
@@ -115,16 +163,25 @@
 
             console.log('✅ Pedido actualizado en Firebase:', orderId, 'Status:', payment.status);
           } else {
-            console.log('⚠️ Pago sin external_reference:', paymentId);
+            console.log('⚠️ Pago sin external_reference válido:', paymentId, 'OrderId:', orderId);
+            console.log('ℹ️ Este pago probablemente es de Mercado Libre, no de nuestra aplicación');
           }
         } catch (mpError) {
-          console.error('Error al consultar pago en Mercado Pago:', mpError.message);
+          console.error('❌ Error al consultar pago en Mercado Pago:', mpError.message);
+          console.error('🔍 Detalles del error:', mpError.response?.data);
           // No fallamos el webhook por errores de consulta
         }
+      } else if (topic === 'merchant_order') {
+        console.log('🛒 Notificación de Mercado Libre recibida, ignorando...');
+      } else {
+        console.log('ℹ️ Tipo de notificación no manejado:', type || topic);
       }
+      
+      console.log('✅ Webhook procesado exitosamente');
       res.status(200).send('OK');
     } catch (error) {
-      console.error('Error en webhook:', error);
+      console.error('💥 Error en webhook:', error);
+      console.error('🔍 Stack trace:', error.stack);
       res.status(500).send('Error');
     }
   });
@@ -144,6 +201,112 @@
       mercadopago: !!(process.env.MERCADOPAGO_ACCESS_TOKEN || 'APP_USR-5645991319401265-072122-42f4292585595942a2f27f863d68dab3-2555387158'),
       port: PORT,
       environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // Endpoint de prueba para simular webhook
+  app.post('/test-webhook', async (req, res) => {
+    try {
+      console.log('🧪 Simulando webhook de prueba...');
+      
+      // Simular un pago exitoso
+      const testPaymentData = {
+        type: 'payment',
+        data: {
+          id: '123456789'
+        }
+      };
+      
+      // Simular directamente el procesamiento del webhook
+      console.log('🔔 Webhook POST recibido:', JSON.stringify(testPaymentData, null, 2));
+      
+      const { type, data } = testPaymentData;
+      console.log('📝 Tipo de notificación:', type);
+      console.log('📊 Datos recibidos:', data);
+      
+      if (type === 'payment') {
+        const paymentId = data.id;
+        console.log('💰 ID del pago:', paymentId);
+        
+        // Verificar si es un pago de prueba (123456)
+        if (paymentId === '123456') {
+          console.log('🧪 Pago de prueba detectado, ignorando...');
+          res.json({
+            success: true,
+            message: 'Pago de prueba detectado y procesado correctamente',
+            paymentId: paymentId,
+            status: 'ignored'
+          });
+          return;
+        }
+        
+        // Para el test, simulamos un pago exitoso
+        res.json({
+          success: true,
+          message: 'Webhook de prueba ejecutado correctamente',
+          paymentId: paymentId,
+          status: 'test_processed'
+        });
+      } else {
+        res.json({
+          success: true,
+          message: 'Tipo de notificación no manejado en prueba',
+          type: type
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error en webhook de prueba:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Endpoints de redirección para pagos
+  app.get('/success', (req, res) => {
+    console.log('✅ Pago exitoso - Redirección recibida');
+    console.log('📋 Query params:', req.query);
+    res.json({
+      status: 'success',
+      message: 'Pago procesado exitosamente',
+      query: req.query
+    });
+  });
+
+  app.get('/failure', (req, res) => {
+    console.log('❌ Pago fallido - Redirección recibida');
+    console.log('📋 Query params:', req.query);
+    res.json({
+      status: 'failure',
+      message: 'Pago fallido',
+      query: req.query
+    });
+  });
+
+  app.get('/pending', (req, res) => {
+    console.log('⏳ Pago pendiente - Redirección recibida');
+    console.log('📋 Query params:', req.query);
+    res.json({
+      status: 'pending',
+      message: 'Pago pendiente de confirmación',
+      query: req.query
+    });
+  });
+
+  // Endpoint para ver logs del webhook
+  app.get('/webhook-logs', (req, res) => {
+    res.json({
+      message: 'Logs del webhook',
+      timestamp: new Date().toISOString(),
+      webhookUrl: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
+      instructions: [
+        '1. Ve a tu Dashboard de Mercado Pago',
+        '2. En Notificaciones → Webhooks',
+        '3. Agrega la URL del webhook',
+        '4. Selecciona eventos: payment y merchant_order'
+      ]
     });
   });
 
