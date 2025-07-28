@@ -84,13 +84,8 @@ admin.initializeApp({
 });
 
 // Configura tu Access Token de Mercado Pago
-if (!process.env.MERCADOPAGO_ACCESS_TOKEN) {
-  console.error('⚠️ MERCADOPAGO_ACCESS_TOKEN no está configurado en las variables de entorno');
-  process.exit(1);
-}
-
-mercadopago.configure({
-  access_token: process.env.MERCADOPAGO_ACCESS_TOKEN
+const client = new mercadopago.MercadoPagoConfig({
+  accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
 });
 
 // Endpoint para crear preferencia
@@ -165,7 +160,7 @@ app.post('/crear-preferencia', async (req, res) => {
     
     console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
     
-    const response = await mercadopago.preferences.create(preference);
+    const response = await client.preference.create(preference);
     console.log('✅ Preferencia creada exitosamente:', response.body.id);
     
     // Guardar la preferencia en Firebase para seguimiento
