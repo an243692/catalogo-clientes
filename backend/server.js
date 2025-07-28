@@ -159,15 +159,23 @@ app.post('/crear-preferencia', async (req, res) => {
         console.log('✅ Preferencia creada exitosamente:', response.id);
         
         // Guardar la preferencia en Firebase para seguimiento
-        await admin.database().ref(`preferences/${orderId}`).set({
+        const preferenceData = {
             preferenceId: response.id,
             createdAt: Date.now(),
-            items,
+            items: items.map(item => ({
+                id: item.id,
+                title: item.title,
+                quantity: item.quantity,
+                unit_price: item.unit_price
+            })),
             payer: {
                 email: payer.email,
-                identification: payer.identification
-            }
-        });
+                name: `${payer.first_name} ${payer.last_name}`.trim()
+            },
+            status: 'created'
+        };
+
+        await admin.database().ref(`preferences/${orderId}`).set(preferenceData);
 
         res.json({ 
             id: response.id,
