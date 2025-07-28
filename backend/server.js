@@ -127,7 +127,7 @@ app.post('/crear-preferencia', async (req, res) => {
         unit_price: parseFloat(item.unit_price),
         description: item.description || `Producto de SOFT DUCK - ${item.title}`,
         category_id: item.category_id || 'others',
-        currency_id: 'ARS'
+        currency_id: 'MXN'  // Cambiado de ARS a MXN
       })),
       payer: {
         email: payer.email,
@@ -142,22 +142,22 @@ app.post('/crear-preferencia', async (req, res) => {
         excluded_payment_types: [
           { id: "ticket" }
         ],
-        installments: 12
+        installments: 12,
+        default_payment_method_id: "credit_card",
+        default_installments: 1
       },
       binary_mode: true,
       statement_descriptor: statement_descriptor || 'SOFT DUCK',
       notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
       external_reference: orderId,
       back_urls: {
-        success: "https://catalogo-clientes-0ido.onrender.com/success",
-        failure: "https://catalogo-clientes-0ido.onrender.com/failure",
-        pending: "https://catalogo-clientes-0ido.onrender.com/pending"
+        success: "https://catalogo-b6e67.web.app/success",
+        failure: "https://catalogo-b6e67.web.app/failure",
+        pending: "https://catalogo-b6e67.web.app/pending"
       },
-      auto_return: "approved",
-      expires: true,
-      expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      auto_return: "approved"
     };
-    
+
     console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
     
     const response = await client.preference.create(preference);
