@@ -123,46 +123,39 @@ app.post('/crear-preferencia', async (req, res) => {
       items: items.map(item => ({
         id: item.id || `item_${Date.now()}_${Math.random()}`,
         title: item.title,
-        quantity: parseInt(item.quantity),
-        unit_price: parseFloat(item.unit_price),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
         description: item.description || `Producto de SOFT DUCK - ${item.title}`,
-        category_id: item.category_id || 'others',
-        currency_id: 'MXN'  // Cambiado de ARS a MXN
+        currency_id: 'MXN'
       })),
       payer: {
         email: payer.email,
         first_name: payer.first_name,
-        last_name: payer.last_name,
-        identification: payer.identification || {
-          type: 'DNI',
-          number: payer.dni || ''
-        }
+        last_name: payer.last_name
       },
       payment_methods: {
         excluded_payment_types: [
-          { id: "ticket" }
+          {
+            id: "ticket"
+          }
         ],
-        installments: 12,
-        default_payment_method_id: "credit_card",
-        default_installments: 1
+        installments: 12
       },
-      binary_mode: true,
-      statement_descriptor: statement_descriptor || 'SOFT DUCK',
-      notification_url: 'https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook',
-      external_reference: orderId,
       back_urls: {
         success: "https://catalogo-b6e67.web.app/success",
         failure: "https://catalogo-b6e67.web.app/failure",
         pending: "https://catalogo-b6e67.web.app/pending"
       },
-      auto_return: "approved"
+      auto_return: "approved",
+      external_reference: orderId,
+      notification_url: "https://catalogo-clientes-0ido.onrender.com/mercadopago/webhook"
     };
 
     console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
     
     try {
         const preferenceClient = new mercadopago.Preference(client);
-        const response = await preferenceClient.create(preference);
+        const response = await preferenceClient.create({ body: preference });
         console.log('✅ Preferencia creada exitosamente:', response.id);
         
         // Guardar la preferencia en Firebase para seguimiento
