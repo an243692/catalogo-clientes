@@ -160,24 +160,34 @@ app.post('/crear-preferencia', async (req, res) => {
 
     console.log('⚙️ Configuración de preferencia:', JSON.stringify(preference, null, 2));
     
-    const response = await client.preference.create(preference);
-    console.log('✅ Preferencia creada exitosamente:', response.body.id);
-    
-    // Guardar la preferencia en Firebase para seguimiento
-    await admin.database().ref(`preferences/${orderId}`).set({
-      preferenceId: response.body.id,
-      createdAt: Date.now(),
-      items,
-      payer: {
-        email: payer.email,
-        identification: payer.identification
-      }
-    });
+    try {
+        const preferenceClient = new mercadopago.Preference(client);
+        const response = await preferenceClient.create(preference);
+        console.log('✅ Preferencia creada exitosamente:', response.id);
+        
+        // Guardar la preferencia en Firebase para seguimiento
+        await admin.database().ref(`preferences/${orderId}`).set({
+            preferenceId: response.id,
+            createdAt: Date.now(),
+            items,
+            payer: {
+                email: payer.email,
+                identification: payer.identification
+            }
+        });
 
-    res.json({ 
-      id: response.body.id,
-      init_point: response.body.init_point
-    });
+        res.json({ 
+            id: response.id,
+            init_point: response.init_point
+        });
+    } catch (error) {
+        console.error('❌ Error al crear preferencia:', error);
+        console.error('Detalles del error:', error.message);
+        res.status(500).json({ 
+            error: 'Error al crear preferencia de pago',
+            details: error.message
+        });
+    }
   } catch (error) {
     console.error('❌ Error al crear preferencia:', error.message);
     if (error.response?.data) {
