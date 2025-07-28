@@ -1800,26 +1800,63 @@ async function pagarConMercadoPago(carrito) {
                 ecommerceManager.updateCartUI();
                 ecommerceManager.showNotification('🎉 ¡Pago exitoso! Tu pedido ha sido procesado.', 'success');
             },
-            onFailure: function(result) {
-                console.error('❌ Pago fallido:', result);
-                let errorMessage = '❌ Error en el pago. ';
+            onFailure: function(error) {
+                console.error('❌ Pago fallido:', error);
+                let errorMessage = '❌ ';
                 
-                // Proporcionar mensajes más específicos
-                if (result.status === 'rejected') {
-                    errorMessage += 'El pago fue rechazado. Verifica los datos de tu tarjeta.';
-                } else if (result.status === 'cancelled') {
-                    errorMessage += 'El pago fue cancelado.';
-                } else if (result.status === 'in_process') {
-                    errorMessage += 'El pago está siendo procesado.';
-                } else {
-                    errorMessage += 'Intenta nuevamente o contacta soporte.';
+                // Mensajes específicos según el código de error
+                switch(error.status) {
+                    case 'cc_rejected_bad_filled_card_number':
+                        errorMessage += 'El número de tarjeta es incorrecto';
+                        break;
+                    case 'cc_rejected_bad_filled_date':
+                        errorMessage += 'La fecha de vencimiento es incorrecta';
+                        break;
+                    case 'cc_rejected_bad_filled_security_code':
+                        errorMessage += 'El código de seguridad es incorrecto';
+                        break;
+                    case 'cc_rejected_bad_filled_other':
+                        errorMessage += 'Alguno de los datos de la tarjeta es incorrecto';
+                        break;
+                    case 'cc_rejected_insufficient_amount':
+                        errorMessage += 'La tarjeta no tiene fondos suficientes';
+                        break;
+                    case 'cc_rejected_high_risk':
+                        errorMessage += 'Tu pago fue rechazado por motivos de seguridad';
+                        break;
+                    case 'cc_rejected_duplicated_payment':
+                        errorMessage += 'Ya realizaste un pago por el mismo valor';
+                        break;
+                    case 'cc_rejected_max_attempts':
+                        errorMessage += 'Llegaste al límite de intentos permitidos';
+                        break;
+                    case 'cc_rejected_card_disabled':
+                        errorMessage += 'Llama a tu banco para activar tu tarjeta o usa otro medio de pago';
+                        break;
+                    case 'cc_rejected_blacklist':
+                        errorMessage += 'No pudimos procesar tu pago. Usa otra tarjeta u otro medio de pago';
+                        break;
+                    case 'cc_rejected_call_for_authorize':
+                        errorMessage += 'Debes autorizar el pago de este monto con tu banco';
+                        break;
+                    default:
+                        errorMessage += 'No pudimos procesar tu pago. Por favor intenta de nuevo.';
                 }
                 
                 ecommerceManager.showNotification(errorMessage, 'error');
+                
+                // Registrar el error para análisis
+                console.log('Detalles del error:', {
+                    status: error.status,
+                    paymentId: error.payment_id,
+                    paymentStatus: error.payment_status,
+                    paymentStatusDetail: error.payment_status_detail,
+                    error: error
+                });
             },
             onPending: function(result) {
                 console.log('⏳ Pago pendiente:', result);
-                ecommerceManager.showNotification('⏳ Pago pendiente. Te notificaremos cuando se confirme.', 'info');
+                ecommerceManager.showNotification('⏳ Tu pago está pendiente de confirmación. Te notificaremos cuando se complete.', 'info');
             }
         });
     } else {
