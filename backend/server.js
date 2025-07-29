@@ -75,21 +75,41 @@ app.post('/stripe/webhook', bodyParser.raw({type: 'application/json'}), async (r
         
         // Actualizar el pedido en Firebase
         const orderId = session.metadata.orderId;
-        const orderRef = admin.database().ref(`orders/${orderId}`);
+        if (!orderId) {
+          throw new Error('No se encontró el ID del pedido en los metadatos');
+        }
+
+        // Obtener referencia al pedido
+        const orderRef = admin.database().ref(`orders/${orderId.replace('order_', '')}`);
         
+        // Actualizar el estado del pedido
         await orderRef.update({
-          status: 'paid',
+          status: 'completed',
           paymentId: session.id,
           paymentStatus: session.payment_status,
-          updatedAt: admin.database.ServerValue.TIMESTAMP
+          updatedAt: admin.database.ServerValue.TIMESTAMP,
+          paymentDetails: {
+            amount: session.amount_total / 100, // Convertir de centavos a pesos
+            currency: session.currency,
+            paymentMethod: session.payment_method_types[0],
+            customerEmail: session.customer_email
+          }
         });
 
-        // Enviar notificación al admin (implementar después)
+        console.log('✅ Pedido actualizado en Firebase:', orderId);
         break;
 
       case 'checkout.session.expired':
         console.log('⌛ Sesión expirada:', event.data.object.id);
-        // Actualizar el estado del pedido a expirado
+        const expiredOrderId = event.data.object.metadata.orderId;
+        if (expiredOrderId) {
+          const expiredOrderRef = admin.database().ref(`orders/${expiredOrderId.replace('order_', '')}`);
+          await expiredOrderRef.update({
+            status: 'expired',
+            updatedAt: admin.database.ServerValue.TIMESTAMP
+          });
+          console.log('❌ Pedido marcado como expirado:', expiredOrderId);
+        }
         break;
 
       default:
@@ -99,7 +119,8 @@ app.post('/stripe/webhook', bodyParser.raw({type: 'application/json'}), async (r
     res.json({received: true});
   } catch (err) {
     console.error('Error al procesar webhook:', err);
-    res.status(500).send('Error al procesar webhook');
+    // No devolver error 500 para evitar que Stripe reintente
+    res.json({received: true, error: err.message});
   }
 });
 
