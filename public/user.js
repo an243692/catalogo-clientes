@@ -1725,8 +1725,22 @@ async function processPaymentWithStripe(cart) {
   }
 
   try {
-    // Crear el pedido primero en Firebase
-    const total = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    // Actualizar precios basado en cantidad total
+    const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const cartWithUpdatedPrices = cart.map(item => {
+      const product = ecommerceManager.products.find(p => p.id === item.id);
+      const isWholesale = totalQuantity >= 10 && product && product.wholesalePrice;
+      return {
+        ...item,
+        unitPrice: isWholesale ? product.wholesalePrice : (product.price || product.individualPrice),
+        priceType: isWholesale ? 'wholesale' : 'individual',
+        images: product ? (product.images || [product.imageUrl]) : [],
+        totalPrice: item.quantity * (isWholesale ? product.wholesalePrice : (product.price || product.individualPrice))
+      };
+    });
+
+    // Calcular el total actualizado
+    const total = cartWithUpdatedPrices.reduce((sum, item) => sum + item.totalPrice, 0);
     const orderRef = push(ref(realtimeDb, 'orders'));
     const orderId = `order_${orderRef.key}`;
 
@@ -1734,7 +1748,15 @@ async function processPaymentWithStripe(cart) {
       id: orderId,
       userId: ecommerceManager.currentUser?.uid,
       userInfo: ecommerceManager.userProfile,
-      items: cart,
+      items: cartWithUpdatedPrices.map(item => ({
+        id: item.id,
+        name: `${item.name} ${item.priceType === 'wholesale' ? '(Precio Mayoreo)' : ''}`,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        priceType: item.priceType,
+        images: item.images
+      })),
       total: total,
       timestamp: Date.now(),
       status: 'pending',
@@ -1749,7 +1771,14 @@ async function processPaymentWithStripe(cart) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: cart,
+        items: cartWithUpdatedPrices.map(item => ({
+          id: item.id,
+          name: `${item.name} ${item.priceType === 'wholesale' ? '(Precio Mayoreo)' : ''}`,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          images: item.images
+        })),
         orderId: orderId,
         userInfo: ecommerceManager.userProfile
       })
