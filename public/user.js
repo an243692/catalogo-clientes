@@ -1729,18 +1729,36 @@ async function processPaymentWithStripe(cart) {
     const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
     const cartWithUpdatedPrices = cart.map(item => {
       const product = ecommerceManager.products.find(p => p.id === item.id);
-      const isWholesale = totalQuantity >= 10 && product && product.wholesalePrice;
+      if (!product) {
+        throw new Error(`Producto no encontrado: ${item.name}`);
+      }
+
+      const isWholesale = totalQuantity >= 10 && product.wholesalePrice;
+      const unitPrice = isWholesale ? product.wholesalePrice : (product.price || product.individualPrice);
+      
+      if (!unitPrice || isNaN(unitPrice)) {
+        throw new Error(`Precio inválido para el producto: ${item.name}`);
+      }
+
       return {
-        ...item,
-        unitPrice: isWholesale ? product.wholesalePrice : (product.price || product.individualPrice),
+        id: item.id,
+        name: `${item.name} ${isWholesale ? '(Precio Mayoreo)' : ''}`,
+        quantity: item.quantity,
+        unitPrice: parseFloat(unitPrice),
+        totalPrice: item.quantity * parseFloat(unitPrice),
         priceType: isWholesale ? 'wholesale' : 'individual',
-        images: product ? (product.images || [product.imageUrl]) : [],
-        totalPrice: item.quantity * (isWholesale ? product.wholesalePrice : (product.price || product.individualPrice))
+        images: product.images || [product.imageUrl] || []
       };
     });
 
     // Calcular el total actualizado
     const total = cartWithUpdatedPrices.reduce((sum, item) => sum + item.totalPrice, 0);
+    
+    // Verificar que el total sea válido
+    if (isNaN(total) || total <= 0) {
+      throw new Error('El total del pedido es inválido');
+    }
+
     const orderRef = push(ref(realtimeDb, 'orders'));
     const orderId = `order_${orderRef.key}`;
 
@@ -1748,15 +1766,7 @@ async function processPaymentWithStripe(cart) {
       id: orderId,
       userId: ecommerceManager.currentUser?.uid,
       userInfo: ecommerceManager.userProfile,
-      items: cartWithUpdatedPrices.map(item => ({
-        id: item.id,
-        name: `${item.name} ${item.priceType === 'wholesale' ? '(Precio Mayoreo)' : ''}`,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: item.totalPrice,
-        priceType: item.priceType,
-        images: item.images
-      })),
+      items: cartWithUpdatedPrices,
       total: total,
       timestamp: Date.now(),
       status: 'pending',
@@ -1771,21 +1781,15 @@ async function processPaymentWithStripe(cart) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        items: cartWithUpdatedPrices.map(item => ({
-          id: item.id,
-          name: `${item.name} ${item.priceType === 'wholesale' ? '(Precio Mayoreo)' : ''}`,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-          images: item.images
-        })),
+        items: cartWithUpdatedPrices,
         orderId: orderId,
         userInfo: ecommerceManager.userProfile
       })
     });
 
     if (!response.ok) {
-      throw new Error('Error al crear la sesión de checkout');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al crear la sesión de checkout');
     }
 
     const { url } = await response.json();
@@ -1795,7 +1799,7 @@ async function processPaymentWithStripe(cart) {
 
   } catch (error) {
     console.error('Error al procesar el pago:', error);
-    ecommerceManager.showNotification('❌ Error al procesar el pago', 'error');
+    ecommerceManager.showNotification(`❌ ${error.message || 'Error al procesar el pago'}`, 'error');
   }
 }
 
