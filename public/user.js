@@ -27,6 +27,9 @@ import {
     update
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
+// Cargar Stripe
+const stripe = Stripe('pk_live_51Rq2HiLIzlkBZfRyuBjZyqBRGjalQWU5Cpwzaqt358SF0UGsMpSSpRhSXHtrLwi7Jc4VAjGEWGEwMG1hgjFeK8XY00899yMKQu');
+
 const firebaseConfig = {
     apiKey: "AIzaSyCLiPkISiuave91bqLg7WGKdqYrz376pCA",
     authDomain: "catalogo-b6e67.firebaseapp.com",
@@ -1714,164 +1717,61 @@ class EcommerceManager {
     }
 }
 
-// Mercado Pago - Usando el Public Key (seguro para frontend)
-const mp = new MercadoPago('APP_USR-bf8415ba-a2b4-4473-8174-8c836488c5af', { locale: 'es-MX' });
-
-async function pagarConMercadoPago(carrito) {
-  if (carrito.length === 0) {
+// Función para procesar el pago con Stripe
+async function processPaymentWithStripe(cart) {
+  if (cart.length === 0) {
     ecommerceManager.showNotification('🛒 Tu carrito está vacío', 'error');
     return;
   }
 
-  // Crear el pedido primero en Firebase
-  const total = carrito.reduce((sum, item) => sum + item.totalPrice, 0);
-  const orderRef = push(ref(realtimeDb, 'orders'));
-  const orderId = `order_${orderRef.key}`;
-
-  const orderData = {
-    id: orderId,
-    userId: ecommerceManager.currentUser?.uid,
-    userInfo: ecommerceManager.userProfile,
-    items: carrito,
-    total: total,
-    timestamp: Date.now(),
-    status: 'pending',
-    paymentMethod: 'card'
-  };
-
   try {
+    // Crear el pedido primero en Firebase
+    const total = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    const orderRef = push(ref(realtimeDb, 'orders'));
+    const orderId = `order_${orderRef.key}`;
+
+    const orderData = {
+      id: orderId,
+      userId: ecommerceManager.currentUser?.uid,
+      userInfo: ecommerceManager.userProfile,
+      items: cart,
+      total: total,
+      timestamp: Date.now(),
+      status: 'pending',
+      paymentMethod: 'card'
+    };
+
     // Guardar el pedido en Firebase
     await set(orderRef, orderData);
 
-    // Prepara los items en el formato de Mercado Pago
-    const items = carrito.map(item => ({
-      title: item.name,
-      quantity: item.quantity,
-      unit_price: item.unitPrice
-    }));
-
-    // Prepara los datos del comprador
-    const payer = {
-      email: ecommerceManager.userProfile?.email || 'cliente@softduck.com',
-      first_name: ecommerceManager.userProfile?.fullName?.split(' ')[0] || 'Cliente',
-      last_name: ecommerceManager.userProfile?.fullName?.split(' ').slice(1).join(' ') || 'Soft Duck'
-    };
-
-    // Prepara los items con más detalles
-    const itemsWithDetails = carrito.map(item => ({
-      id: item.id,
-      title: item.name,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      description: `Producto de SOFT DUCK - ${item.name}`,
-      category_id: 'others' // Categoría por defecto
-    }));
-
-    // Llama a tu backend para crear la preferencia
-    const res = await fetch('https://catalogo-clientes-0ido.onrender.com/crear-preferencia', {
+    // Crear sesión de checkout con Stripe
+    const response = await fetch('https://catalogo-clientes-0ido.onrender.com/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        items: itemsWithDetails, 
-        orderId,
-        payer,
-        statement_descriptor: 'SOFT DUCK'
+      body: JSON.stringify({
+        items: cart,
+        orderId: orderId,
+        userInfo: ecommerceManager.userProfile
       })
     });
 
-    if (!res.ok) {
-        console.error('Error al crear la preferencia:', await res.text());
-        ecommerceManager.showNotification('❌ Error al crear la preferencia de pago', 'error');
-        return;
+    if (!response.ok) {
+      throw new Error('Error al crear la sesión de checkout');
     }
 
-    const data = await res.json();
+    const { url } = await response.json();
     
-    if (data.id) {
-        // Abre el checkout de Mercado Pago
-        mp.checkout({
-            preference: { id: data.id },
-            autoOpen: true,
-            onSuccess: function(result) {
-                console.log('🎉 Pago exitoso:', result);
-                // El webhook del backend se encargará de actualizar el pedido
-                // Aquí solo limpiamos el carrito y mostramos éxito
-                ecommerceManager.cart = [];
-                ecommerceManager.updateCartUI();
-                ecommerceManager.showNotification('🎉 ¡Pago exitoso! Tu pedido ha sido procesado.', 'success');
-            },
-            onFailure: function(error) {
-                console.error('❌ Pago fallido:', error);
-                let errorMessage = '❌ ';
-                
-                // Mensajes específicos según el código de error
-                switch(error.status) {
-                    case 'cc_rejected_bad_filled_card_number':
-                        errorMessage += 'El número de tarjeta es incorrecto';
-                        break;
-                    case 'cc_rejected_bad_filled_date':
-                        errorMessage += 'La fecha de vencimiento es incorrecta';
-                        break;
-                    case 'cc_rejected_bad_filled_security_code':
-                        errorMessage += 'El código de seguridad es incorrecto';
-                        break;
-                    case 'cc_rejected_bad_filled_other':
-                        errorMessage += 'Alguno de los datos de la tarjeta es incorrecto';
-                        break;
-                    case 'cc_rejected_insufficient_amount':
-                        errorMessage += 'La tarjeta no tiene fondos suficientes';
-                        break;
-                    case 'cc_rejected_high_risk':
-                        errorMessage += 'Tu pago fue rechazado por motivos de seguridad';
-                        break;
-                    case 'cc_rejected_duplicated_payment':
-                        errorMessage += 'Ya realizaste un pago por el mismo valor';
-                        break;
-                    case 'cc_rejected_max_attempts':
-                        errorMessage += 'Llegaste al límite de intentos permitidos';
-                        break;
-                    case 'cc_rejected_card_disabled':
-                        errorMessage += 'Llama a tu banco para activar tu tarjeta o usa otro medio de pago';
-                        break;
-                    case 'cc_rejected_blacklist':
-                        errorMessage += 'No pudimos procesar tu pago. Usa otra tarjeta u otro medio de pago';
-                        break;
-                    case 'cc_rejected_call_for_authorize':
-                        errorMessage += 'Debes autorizar el pago de este monto con tu banco';
-                        break;
-                    default:
-                        errorMessage += 'No pudimos procesar tu pago. Por favor intenta de nuevo.';
-                }
-                
-                ecommerceManager.showNotification(errorMessage, 'error');
-                
-                // Registrar el error para análisis
-                console.log('Detalles del error:', {
-                    status: error.status,
-                    paymentId: error.payment_id,
-                    paymentStatus: error.payment_status,
-                    paymentStatusDetail: error.payment_status_detail,
-                    error: error
-                });
-            },
-            onPending: function(result) {
-                console.log('⏳ Pago pendiente:', result);
-                ecommerceManager.showNotification('⏳ Tu pago está pendiente de confirmación. Te notificaremos cuando se complete.', 'info');
-            }
-        });
-    } else {
-        console.error('No se recibió el ID de preferencia');
-        ecommerceManager.showNotification('❌ No se pudo iniciar el pago', 'error');
-    }
+    // Redirigir al checkout de Stripe
+    window.location.href = url;
 
   } catch (error) {
-      console.error('Error en pagarConMercadoPago:', error);
-      ecommerceManager.showNotification('❌ Error de conexión al iniciar el pago', 'error');
+    console.error('Error al procesar el pago:', error);
+    ecommerceManager.showNotification('❌ Error al procesar el pago', 'error');
   }
 }
 
 window.ecommerceManager = new EcommerceManager();
 
 document.getElementById('checkout-btn').addEventListener('click', () => {
-  pagarConMercadoPago(ecommerceManager.cart);
+  processPaymentWithStripe(ecommerceManager.cart);
 });
