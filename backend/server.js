@@ -45,8 +45,8 @@ if (!admin.apps.length) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configurar trust proxy para manejar correctamente las IPs detrás de proxies
-app.set('trust proxy', true);
+// Configurar trust proxy de manera más segura
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 
 // Middleware de seguridad
 app.use(helmet());
