@@ -113,9 +113,10 @@ app.post('/create-checkout-session', express.json(), async (req, res) => {
         product_data: {
           name: item.name,
           description: `Producto de SOFT DUCK - ${item.name}`,
-          images: item.images ? [item.images[0]] : []
+          // Solo usar la primera imagen si existe y es una URL válida
+          images: item.images && item.images[0] && item.images[0].startsWith('http') ? [item.images[0]] : []
         },
-        unit_amount: Math.round(item.price * 100), // Stripe usa centavos
+        unit_amount: Math.round(item.unitPrice * 100), // Usar unitPrice en lugar de price
       },
       quantity: item.quantity
     }));
