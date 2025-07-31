@@ -41,7 +41,7 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(firebaseCredentials),
     databaseURL: "https://catalogo-b6e67-default-rtdb.firebaseio.com"
   });
-}
+  }
 
   const app = express();
   const PORT = process.env.PORT || 3000;
@@ -53,6 +53,10 @@ app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 app.use(helmet());
 app.use(cors());
 app.use(limiter);
+
+// Configurar body parser con límites más grandes
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Configurar el webhook de Stripe
 app.post('/stripe/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
@@ -125,7 +129,7 @@ app.post('/stripe/webhook', bodyParser.raw({type: 'application/json'}), async (r
 });
 
 // Endpoint para crear sesión de checkout
-app.post('/create-checkout-session', express.json(), async (req, res) => {
+app.post('/create-checkout-session', async (req, res) => {
   try {
     const { items, orderId, userInfo } = req.body;
 
