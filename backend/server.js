@@ -1,10 +1,10 @@
 require('dotenv').config();
-  const express = require('express');
-  const bodyParser = require('body-parser');
-  const cors = require('cors');
-  const admin = require('firebase-admin');
-  const fs = require('fs');
-  const path = require('path');
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -14,23 +14,23 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100 // límite de 100 solicitudes por ventana por IP
 });
-  
-  // Debug: Ver qué variables de entorno están disponibles
-  console.log('=== DEBUG: Variables de entorno disponibles ===');
-  console.log('FIREBASE_CREDENTIALS existe:', !!process.env.FIREBASE_CREDENTIALS);
+
+// Debug: Ver qué variables de entorno están disponibles
+console.log('=== DEBUG: Variables de entorno disponibles ===');
+console.log('FIREBASE_CREDENTIALS existe:', !!process.env.FIREBASE_CREDENTIALS);
 console.log('STRIPE_SECRET_KEY existe:', !!process.env.STRIPE_SECRET_KEY);
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('PORT:', process.env.PORT);
-  console.log('==============================================');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('==============================================');
 
 // Inicializar Firebase Admin
 let firebaseCredentials;
-    if (process.env.FIREBASE_CREDENTIALS) {
-      console.log('Variable FIREBASE_CREDENTIALS encontrada');
-      console.log('Longitud de FIREBASE_CREDENTIALS:', process.env.FIREBASE_CREDENTIALS.length);
+if (process.env.FIREBASE_CREDENTIALS) {
+  console.log('Variable FIREBASE_CREDENTIALS encontrada');
+  console.log('Longitud de FIREBASE_CREDENTIALS:', process.env.FIREBASE_CREDENTIALS.length);
   try {
     firebaseCredentials = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-      console.log('Credenciales parseadas correctamente desde variable de entorno');
+    console.log('Credenciales parseadas correctamente desde variable de entorno');
   } catch (error) {
     console.error('Error al parsear FIREBASE_CREDENTIALS:', error);
   }
@@ -41,10 +41,10 @@ if (!admin.apps.length) {
     credential: admin.credential.cert(firebaseCredentials),
     databaseURL: "https://catalogo-b6e67-default-rtdb.firebaseio.com"
   });
-  }
+}
 
-  const app = express();
-  const PORT = process.env.PORT || 3000;
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // Configurar trust proxy de manera más segura
 app.set('trust proxy', 'loopback, linklocal, uniquelocal');
@@ -54,12 +54,20 @@ app.use(helmet());
 app.use(cors());
 app.use(limiter);
 
-// Configurar body parser con límites apropiados
-app.use(express.json({ limit: '10mb' }));
+// Middleware condicional para body parsing
+app.use((req, res, next) => {
+  if (req.originalUrl === '/stripe/webhook') {
+    // Para webhook, usar raw body
+    bodyParser.raw({type: 'application/json'})(req, res, next);
+  } else {
+    // Para otros endpoints, usar JSON con límite
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configurar el webhook de Stripe
-app.post('/stripe/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
+app.post('/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
