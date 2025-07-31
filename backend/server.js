@@ -54,9 +54,9 @@ app.use(helmet());
 app.use(cors());
 app.use(limiter);
 
-// Configurar body parser con límites más grandes
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Configurar body parser con límites apropiados
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Configurar el webhook de Stripe
 app.post('/stripe/webhook', bodyParser.raw({type: 'application/json'}), async (req, res) => {
