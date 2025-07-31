@@ -1150,95 +1150,35 @@ class AdminManager {
         }).join('');
     }
 
-    generateThermalTicket(orderId) {
-        const order = this.orders.find(o => o.id === orderId);
-        if (!order) {
-            this.showNotification('Pedido no encontrado', 'error');
-            return;
-        }
-
-        // Populate ticket template with enhanced information
-        const ticketDate = document.getElementById('ticketDate');
-        const ticketOrderId = document.getElementById('ticketOrderId');
-        const ticketCustomerName = document.getElementById('ticketCustomerName');
-        const ticketCustomerPhone = document.getElementById('ticketCustomerPhone');
-        const ticketCustomerEmail = document.getElementById('ticketCustomerEmail');
-        const ticketPaymentInfo = document.getElementById('ticketPaymentInfo');
-        const ticketDeliveryInfo = document.getElementById('ticketDeliveryInfo');
-        const ticketItems = document.getElementById('ticketItems');
-        const ticketTotal = document.getElementById('ticketTotal');
-
-        // Set date and order ID
-        ticketDate.textContent = new Date(order.timestamp).toLocaleString('es-ES');
-        ticketOrderId.textContent = `PEDIDO #${order.id.slice(-6)}`;
-
-        // Customer information
-        ticketCustomerName.textContent = order.userInfo?.fullName || 'Cliente';
-        ticketCustomerPhone.textContent = `TEL: ${order.userInfo?.phone || 'N/A'}`;
-        ticketCustomerEmail.textContent = `EMAIL: ${order.userInfo?.email || 'N/A'}`;
-
-        // Payment information
-        const paymentMethod = order.paymentMethod || 'cash';
-        const paymentText = paymentMethod === 'card' ? 'TARJETA (MERCADO PAGO)' : 'EFECTIVO';
-        ticketPaymentInfo.innerHTML = `
-            <div class="ticket-payment-title">METODO DE PAGO</div>
-            <div class="ticket-payment-details">${paymentText}</div>
-        `;
-
-        // Delivery information
-        let deliveryHTML = '';
-        if (order.deliveryInfo) {
-            if (order.deliveryInfo.type === 'pickup') {
-                deliveryHTML = `
-                    <div class="ticket-delivery-title">RECOGER EN TIENDA</div>
-                    <div class="ticket-delivery-details">TIENDA: ${order.deliveryInfo.store || 'Principal'}</div>
-                `;
-            } else if (order.deliveryInfo.type === 'delivery') {
-                const fullAddress = [
-                    order.deliveryInfo.street,
-                    order.deliveryInfo.city,
-                    order.deliveryInfo.state,
-                    order.deliveryInfo.zip
-                ].filter(part => part && part.trim()).join(', ');
-                
-                deliveryHTML = `
-                    <div class="ticket-delivery-title">ENVIO A DOMICILIO</div>
-                    <div class="ticket-delivery-details">DIR: ${fullAddress}</div>
-                    ${order.deliveryInfo.instructions ? `<div class="ticket-delivery-details">NOTA: ${order.deliveryInfo.instructions}</div>` : ''}
-                `;
+    async reloadData() {
+        try {
+            console.log('🔄 Recargando datos del admin...');
+            
+            // Recargar en paralelo para mejor rendimiento
+            await Promise.all([
+                this.loadOrders(),
+                this.loadUsers(),
+                this.loadPayments()
+            ]);
+            
+            // Recalcular estadísticas
+            this.calculateDashboardStats();
+            
+            // Re-renderizar la vista actual
+            if (this.currentTab === 'orders') {
+                this.renderOrders();
+            } else if (this.currentTab === 'dashboard') {
+                this.renderDashboard();
+            } else if (this.currentTab === 'users') {
+                this.renderUsers();
             }
+            
+            console.log('✅ Datos recargados exitosamente');
+            
+        } catch (error) {
+            console.error('❌ Error recargando datos:', error);
+            this.showNotification('Error al recargar los datos', 'error');
         }
-        ticketDeliveryInfo.innerHTML = deliveryHTML;
-
-        // Format items for thermal ticket
-        let itemsHTML = '';
-        order.items.forEach(item => {
-            itemsHTML += `
-                <div class="ticket-item">
-                    <div class="ticket-item-name">${item.name}</div>
-                    <div class="ticket-item-details">
-                        ${item.quantity} x $${item.unitPrice.toFixed(2)} 
-                        ${item.priceType === 'wholesale' ? '(MAYOREO)' : ''}
-                    </div>
-                    <div class="ticket-item-price">$${item.totalPrice.toFixed(2)}</div>
-                </div>
-            `;
-        });
-
-        ticketItems.innerHTML = itemsHTML;
-        ticketTotal.textContent = `TOTAL: $${order.total.toFixed(2)}`;
-
-        // Show ticket and print
-        const ticket = document.getElementById('thermalTicket');
-        ticket.style.display = 'block';
-        
-        // Wait a moment for rendering then print
-        setTimeout(() => {
-            window.print();
-            ticket.style.display = 'none';
-        }, 300);
-
-        this.showNotification('Ticket térmico generado para impresión', 'success');
     }
 
     async completeOrder(orderId) {
@@ -1254,10 +1194,7 @@ class AdminManager {
             });
 
             this.showNotification('Pedido marcado como completado', 'success');
-            await this.loadOrders();
-            await this.loadPayments();
-            this.calculateDashboardStats();
-            this.renderOrders();
+            await this.reloadData();
             if (this.currentTab === 'dashboard') {
                 this.renderDashboard();
             }
@@ -1297,13 +1234,7 @@ class AdminManager {
             await remove(orderRef);
 
             this.showNotification('Pedido cancelado y stock restaurado exitosamente', 'success');
-            await this.loadOrders();
-            await this.loadUsers();
-            await this.loadProducts();
-            await this.loadPayments();
-            this.calculateDashboardStats();
-            this.renderOrders();
-            this.renderProducts();
+            await this.reloadData();
             if (this.currentTab === 'users') {
                 this.renderUsers();
             }
@@ -1371,9 +1302,7 @@ class AdminManager {
 
             this.showNotification('Producto agregado exitosamente', 'success');
             this.resetForm();
-            await this.loadProducts();
-            this.calculateDashboardStats();
-            this.renderProducts();
+            await this.reloadData();
             if (this.currentTab === 'dashboard') {
                 this.renderDashboard();
             }
@@ -1393,9 +1322,7 @@ class AdminManager {
 
             this.showNotification('Producto actualizado exitosamente', 'success');
             this.cancelEdit();
-            await this.loadProducts();
-            this.calculateDashboardStats();
-            this.renderProducts();
+            await this.reloadData();
             if (this.currentTab === 'dashboard') {
                 this.renderDashboard();
             }
@@ -1455,9 +1382,7 @@ class AdminManager {
         try {
             await deleteDoc(doc(db, 'products', productId));
             this.showNotification('Producto eliminado exitosamente', 'success');
-            await this.loadProducts();
-            this.calculateDashboardStats();
-            this.renderProducts();
+            await this.reloadData();
             if (this.currentTab === 'dashboard') {
                 this.renderDashboard();
             }
@@ -1559,30 +1484,110 @@ class AdminManager {
         }
     }
 
-    async reloadData() {
-        try {
-            console.log('🔄 Recargando datos...');
-            await this.loadOrders();
-            await this.loadUsers();
-            await this.loadPayments();
-            this.calculateDashboardStats();
-            this.renderDashboard();
-            this.renderOrders();
-            this.renderUsers();
-            this.renderPayments();
-            console.log('✅ Datos recargados');
-            this.showNotification('Datos recargados exitosamente', 'success');
-        } catch (error) {
-            console.error('❌ Error al recargar datos:', error);
-            this.showNotification('Error al recargar datos', 'error');
+    async generateThermalTicket(orderId) {
+        const order = this.orders.find(o => o.id === orderId);
+        if (!order) {
+            this.showNotification('Pedido no encontrado', 'error');
+            return;
         }
+
+        // Populate ticket template with enhanced information
+        const ticketDate = document.getElementById('ticketDate');
+        const ticketOrderId = document.getElementById('ticketOrderId');
+        const ticketCustomerName = document.getElementById('ticketCustomerName');
+        const ticketCustomerPhone = document.getElementById('ticketCustomerPhone');
+        const ticketCustomerEmail = document.getElementById('ticketCustomerEmail');
+        const ticketPaymentInfo = document.getElementById('ticketPaymentInfo');
+        const ticketDeliveryInfo = document.getElementById('ticketDeliveryInfo');
+        const ticketItems = document.getElementById('ticketItems');
+        const ticketTotal = document.getElementById('ticketTotal');
+
+        // Set date and order ID
+        ticketDate.textContent = new Date(order.timestamp).toLocaleString('es-ES');
+        ticketOrderId.textContent = `PEDIDO #${order.id.slice(-6)}`;
+
+        // Customer information
+        ticketCustomerName.textContent = order.userInfo?.fullName || 'Cliente';
+        ticketCustomerPhone.textContent = `TEL: ${order.userInfo?.phone || 'N/A'}`;
+        ticketCustomerEmail.textContent = `EMAIL: ${order.userInfo?.email || 'N/A'}`;
+
+        // Payment information
+        const paymentMethod = order.paymentMethod || 'cash';
+        const paymentText = paymentMethod === 'card' ? 'TARJETA (MERCADO PAGO)' : 'EFECTIVO';
+        ticketPaymentInfo.innerHTML = `
+            <div class="ticket-payment-title">METODO DE PAGO</div>
+            <div class="ticket-payment-details">${paymentText}</div>
+        `;
+
+        // Delivery information
+        let deliveryHTML = '';
+        if (order.deliveryInfo) {
+            if (order.deliveryInfo.type === 'pickup') {
+                deliveryHTML = `
+                    <div class="ticket-delivery-title">RECOGER EN TIENDA</div>
+                    <div class="ticket-delivery-details">TIENDA: ${order.deliveryInfo.store || 'Principal'}</div>
+                `;
+            } else if (order.deliveryInfo.type === 'delivery') {
+                const fullAddress = [
+                    order.deliveryInfo.street,
+                    order.deliveryInfo.city,
+                    order.deliveryInfo.state,
+                    order.deliveryInfo.zip
+                ].filter(part => part && part.trim()).join(', ');
+                
+                deliveryHTML = `
+                    <div class="ticket-delivery-title">ENVIO A DOMICILIO</div>
+                    <div class="ticket-delivery-details">DIR: ${fullAddress}</div>
+                    ${order.deliveryInfo.instructions ? `<div class="ticket-delivery-details">NOTA: ${order.deliveryInfo.instructions}</div>` : ''}
+                `;
+            }
+        }
+        ticketDeliveryInfo.innerHTML = deliveryHTML;
+
+        // Format items for thermal ticket
+        let itemsHTML = '';
+        order.items.forEach(item => {
+            itemsHTML += `
+                <div class="ticket-item">
+                    <div class="ticket-item-name">${item.name}</div>
+                    <div class="ticket-item-details">
+                        ${item.quantity} x $${item.unitPrice.toFixed(2)} 
+                        ${item.priceType === 'wholesale' ? '(MAYOREO)' : ''}
+                    </div>
+                    <div class="ticket-item-price">$${item.totalPrice.toFixed(2)}</div>
+                </div>
+            `;
+        });
+
+        ticketItems.innerHTML = itemsHTML;
+        ticketTotal.textContent = `TOTAL: $${order.total.toFixed(2)}`;
+
+        // Show ticket and print
+        const ticket = document.getElementById('thermalTicket');
+        ticket.style.display = 'block';
+        
+        // Wait a moment for rendering then print
+        setTimeout(() => {
+            window.print();
+            ticket.style.display = 'none';
+        }, 300);
+
+        this.showNotification('Ticket térmico generado para impresión', 'success');
     }
 
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
+        
+        const iconMap = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            info: 'fa-info-circle',
+            warning: 'fa-exclamation-triangle'
+        };
+        
         notification.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+            <i class="fas ${iconMap[type] || iconMap.info}"></i>
             <span>${message}</span>
         `;
 
