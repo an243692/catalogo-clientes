@@ -17,7 +17,9 @@ import {
     get, 
     update,
     remove,
-    onValue 
+    onValue,
+    push,
+    set
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const firebaseConfig = {
@@ -326,23 +328,57 @@ class AdminManager {
 
     async loadOrders() {
         try {
+            console.log('🔄 Iniciando carga de pedidos...');
             const ordersRef = ref(realtimeDb, 'orders');
+            console.log('📝 Referencia creada:', ordersRef);
+            
             const snapshot = await get(ordersRef);
+            console.log('📊 Snapshot obtenido:', snapshot);
+            console.log('📊 Snapshot existe:', snapshot.exists());
             
             this.orders = [];
             if (snapshot.exists()) {
                 const ordersData = snapshot.val();
+                console.log('📋 Datos de pedidos:', ordersData);
+                console.log('📋 Claves de pedidos:', Object.keys(ordersData));
+                
                 Object.keys(ordersData).forEach(key => {
-                    this.orders.push({
+                    console.log('📄 Procesando pedido:', key, ordersData[key]);
+                    const orderData = {
                         id: key,
                         ...ordersData[key]
-                    });
+                    };
+                    
+                    // Agregar campos faltantes solo si no existen
+                    if (!orderData.userId) {
+                        orderData.userId = key;
+                    }
+                    if (!orderData.status) {
+                        orderData.status = 'pending';
+                    }
+                    if (!orderData.timestamp) {
+                        orderData.timestamp = Date.now();
+                    }
+                    if (!orderData.total && orderData.items) {
+                        orderData.total = orderData.items.reduce((sum, item) => sum + (parseFloat(item.totalPrice) || 0), 0);
+                    }
+                    if (!orderData.paymentMethod) {
+                        orderData.paymentMethod = 'cash';
+                    }
+                    
+                    console.log('✅ Pedido procesado:', orderData);
+                    this.orders.push(orderData);
                 });
+                
                 // Sort by timestamp desc
-                this.orders.sort((a, b) => b.timestamp - a.timestamp);
+                this.orders.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                console.log('📊 Total de pedidos cargados:', this.orders.length);
+            } else {
+                console.log('❌ No hay pedidos en la base de datos');
             }
         } catch (error) {
-            console.error('Error loading orders:', error);
+            console.error('❌ Error loading orders:', error);
+            console.error('❌ Error details:', error.message, error.stack);
             this.showNotification('Error al cargar los pedidos', 'error');
         }
     }
@@ -356,10 +392,16 @@ class AdminManager {
             if (snapshot.exists()) {
                 const usersData = snapshot.val();
                 Object.keys(usersData).forEach(key => {
-                    const userOrders = this.orders.filter(order => order.userId === key);
-                    this.users.push({
+                    const userData = {
                         id: key,
-                        ...usersData[key],
+                        ...usersData[key]
+                    };
+                    
+                    // Buscar pedidos de este usuario
+                    const userOrders = this.orders.filter(order => order.userId === key);
+                    
+                    this.users.push({
+                        ...userData,
                         ordersCount: userOrders.length,
                         orders: userOrders
                     });
@@ -513,10 +555,25 @@ class AdminManager {
 
         // Add recent orders
         this.orders.slice(0, 5).forEach(order => {
+            let customerName = order.userInfo?.fullName || 'Cliente';
+            
+            // Si no hay información de usuario, intentar buscar en la lista de usuarios
+            if (customerName === 'Cliente' && this.users.length > 0) {
+                const user = this.users.find(u => u.id === order.userId);
+                if (user && user.fullName) {
+                    customerName = user.fullName;
+                }
+            }
+            
+            // Si aún no tenemos nombre, usar el ID del usuario
+            if (customerName === 'Cliente' && order.userId) {
+                customerName = `Cliente ${order.userId.slice(-6)}`;
+            }
+            
             recentActivities.push({
                 type: 'order',
                 title: `Nuevo pedido #${order.id.slice(-6)}`,
-                details: `${order.userInfo?.fullName || 'Cliente'} - $${order.total.toFixed(2)}`,
+                details: `${customerName} - $${(order.total || 0).toFixed(2)}`,
                 timestamp: order.timestamp,
                 icon: 'order'
             });
@@ -708,9 +765,14 @@ class AdminManager {
     }
 
     renderOrders() {
+        console.log('🎨 Iniciando renderOrders...');
+        console.log('📊 Pedidos disponibles:', this.orders);
+        
         const container = document.getElementById('ordersGrid');
+        console.log('📝 Container encontrado:', container);
         
         if (this.orders.length === 0) {
+            console.log('📋 No hay pedidos para mostrar');
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-shopping-bag"></i>
@@ -738,11 +800,28 @@ class AdminManager {
             });
         }
 
+        console.log('📊 Pedidos filtrados:', filteredOrders);
+
         // Group orders by customer
         const customerOrders = new Map();
         filteredOrders.forEach(order => {
+            console.log('📄 Procesando order:', order.id, 'Status:', order.status);
+            
             const customerId = order.userId;
-            const customerName = order.userInfo?.fullName || 'Cliente desconocido';
+            let customerName = order.userInfo?.fullName || 'Cliente desconocido';
+            
+            // Si no hay información de usuario, intentar buscar en la lista de usuarios
+            if (customerName === 'Cliente desconocido' && this.users.length > 0) {
+                const user = this.users.find(u => u.id === customerId);
+                if (user && user.fullName) {
+                    customerName = user.fullName;
+                }
+            }
+            
+            // Si aún no tenemos nombre, usar el ID del usuario
+            if (customerName === 'Cliente desconocido' && customerId) {
+                customerName = `Cliente ${customerId.slice(-6)}`;
+            }
             
             if (!customerOrders.has(customerId)) {
                 customerOrders.set(customerId, {
@@ -756,7 +835,10 @@ class AdminManager {
             customerOrders.get(customerId).orders.push(order);
         });
 
+        console.log('📊 Pedidos agrupados por cliente:', customerOrders.size);
+
         if (customerOrders.size === 0) {
+            console.log('📋 No hay pedidos que coincidan con los filtros');
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-filter"></i>
@@ -767,11 +849,14 @@ class AdminManager {
             return;
         }
 
+        console.log('🎨 Renderizando pedidos...');
         container.innerHTML = Array.from(customerOrders.entries()).map(([customerId, customerData]) => {
             const isExpanded = this.expandedCustomers.has(customerId);
             const expandIcon = isExpanded ? 'fa-chevron-down' : 'fa-chevron-right';
             
             const ordersHTML = customerData.orders.map(order => {
+                console.log('🎨 Renderizando order específico:', order.id);
+                
                 const orderDate = new Date(order.timestamp).toLocaleString('es-ES');
                 const statusClass = order.status === 'completed' ? 'status-completed' : 
                                    order.status === 'cancelRequested' ? 'status-cancel-requested' : 
@@ -820,10 +905,17 @@ class AdminManager {
                             </div>
                         `;
                     } else if (order.deliveryInfo.type === 'delivery') {
+                        const fullAddress = [
+                            order.deliveryInfo.street,
+                            order.deliveryInfo.city,
+                            order.deliveryInfo.state,
+                            order.deliveryInfo.zip
+                        ].filter(part => part && part.trim()).join(', ');
+                        
                         deliveryInfo = `
                             <div class="delivery-info">
                                 <h4><i class="fas fa-truck-fast"></i> Envío a Domicilio</h4>
-                                <p><strong>Dirección:</strong> ${order.deliveryInfo.street || ''}, ${order.deliveryInfo.city || ''}, ${order.deliveryInfo.state || ''}, ${order.deliveryInfo.zip || ''}</p>
+                                <p><strong>Dirección:</strong> ${fullAddress}</p>
                                 ${order.deliveryInfo.instructions ? `<p><strong>Instrucciones:</strong> ${order.deliveryInfo.instructions}</p>` : ''}
                             </div>
                         `;
@@ -846,10 +938,10 @@ class AdminManager {
                         <div class="order-customer">
                             <div>
                                 <p><strong>Fecha:</strong> ${orderDate}</p>
-                                <p><strong>Items:</strong> ${order.items.length} productos</p>
+                                <p><strong>Items:</strong> ${(order.items || []).length} productos</p>
                             </div>
                             <div>
-                                <p><strong>Total:</strong> $${order.total.toFixed(2)}</p>
+                                <p><strong>Total:</strong> $${(parseFloat(order.total) || 0).toFixed(2)}</p>
                                 <p><strong>Método de Pago:</strong> ${paymentMethodText}</p>
                             </div>
                         </div>
@@ -858,13 +950,13 @@ class AdminManager {
 
                         <div class="order-items">
                             <h4 style="margin-bottom: 0.75rem; font-size: 0.875rem; font-weight: 600; color: var(--text-primary);">Productos:</h4>
-                            ${order.items.map(item => `
+                            ${(order.items || []).map(item => `
                                 <div class="order-item">
                                     <div>
                                         <strong>${item.name}</strong><br>
-                                        <small>Cantidad: ${item.quantity} | Precio: $${item.unitPrice.toFixed(2)} (${item.priceType || 'individual'})</small>
+                                        <small>Cantidad: ${item.quantity} | Precio: $${(parseFloat(item.unitPrice) || 0).toFixed(2)} (${item.priceType || 'individual'})</small>
                                     </div>
-                                    <div>$${item.totalPrice.toFixed(2)}</div>
+                                    <div>$${(parseFloat(item.totalPrice) || 0).toFixed(2)}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -896,6 +988,8 @@ class AdminManager {
                 </div>
             `;
         }).join('');
+        
+        console.log('✅ renderOrders completado');
     }
 
     renderPayments() {
@@ -1386,6 +1480,102 @@ class AdminManager {
         this.productImages = [];
         this.primaryImageIndex = 0;
         this.renderImagesPreview();
+    }
+
+    async checkStripePayments() {
+        try {
+            console.log('🔍 Verificando pagos de Stripe...');
+            
+            // Buscar pedidos con paymentId (pagos con tarjeta)
+            const cardOrders = this.orders.filter(order => order.paymentId);
+            
+            console.log('💳 Pedidos con tarjeta encontrados:', cardOrders.length);
+            
+            cardOrders.forEach(order => {
+                console.log(`📊 Pedido ${order.id}:`, {
+                    status: order.status,
+                    paymentId: order.paymentId,
+                    paymentStatus: order.paymentStatus,
+                    total: order.total
+                });
+            });
+            
+            this.showNotification(`Encontrados ${cardOrders.length} pedidos con tarjeta`, 'info');
+            
+        } catch (error) {
+            console.error('❌ Error verificando pagos:', error);
+            this.showNotification('Error al verificar pagos', 'error');
+        }
+    }
+
+    async createTestOrder() {
+        try {
+            console.log('🧪 Creando pedido de prueba...');
+            
+            const testOrderRef = push(ref(realtimeDb, 'orders'));
+            const testOrderId = testOrderRef.key;
+            
+            const testOrderData = {
+                id: testOrderId,
+                userId: 'test-user-123',
+                userInfo: {
+                    fullName: 'Cliente de Prueba',
+                    email: 'test@example.com',
+                    phone: '555-1234',
+                    location: 'Ciudad de México'
+                },
+                items: [
+                    {
+                        id: 'test-product-1',
+                        name: 'Producto de Prueba',
+                        priceType: 'individual',
+                        quantity: 2,
+                        totalPrice: 50,
+                        unitPrice: 25,
+                        wholesalePrice: 20
+                    }
+                ],
+                total: 50,
+                timestamp: Date.now(),
+                status: 'pending',
+                paymentMethod: 'cash',
+                deliveryInfo: {
+                    type: 'pickup',
+                    store: 'Tienda Principal'
+                }
+            };
+            
+            await set(testOrderRef, testOrderData);
+            
+            console.log('✅ Pedido de prueba creado:', testOrderId);
+            this.showNotification('Pedido de prueba creado exitosamente', 'success');
+            
+            // Recargar datos
+            await this.reloadData();
+            
+        } catch (error) {
+            console.error('❌ Error creando pedido de prueba:', error);
+            this.showNotification('Error al crear pedido de prueba', 'error');
+        }
+    }
+
+    async reloadData() {
+        try {
+            console.log('🔄 Recargando datos...');
+            await this.loadOrders();
+            await this.loadUsers();
+            await this.loadPayments();
+            this.calculateDashboardStats();
+            this.renderDashboard();
+            this.renderOrders();
+            this.renderUsers();
+            this.renderPayments();
+            console.log('✅ Datos recargados');
+            this.showNotification('Datos recargados exitosamente', 'success');
+        } catch (error) {
+            console.error('❌ Error al recargar datos:', error);
+            this.showNotification('Error al recargar datos', 'error');
+        }
     }
 
     showNotification(message, type = 'info') {
