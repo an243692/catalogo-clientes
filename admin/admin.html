@@ -16,6 +16,38 @@
                 <span>Panel Administrador</span>
             </div>
             
+            <div class="nav-stats">
+                <div class="stat-item">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span id="totalOrders">0</span>
+                    <small>Pedidos</small>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-dollar-sign"></i>
+                    <span id="totalRevenue">$0</span>
+                    <small>Ingresos</small>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <span id="totalUsers">0</span>
+                    <small>Usuarios</small>
+                </div>
+                <div class="stat-item">
+                    <button class="reload-btn" onclick="adminManager.reloadData()" title="Recargar datos">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="stat-item">
+                    <button class="test-btn" onclick="adminManager.createTestOrder()" title="Crear pedido de prueba">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="stat-item">
+                    <button class="stripe-btn" onclick="adminManager.checkStripePayments()" title="Verificar pagos Stripe">
+                        <i class="fas fa-credit-card"></i>
+                    </button>
+                </div>
+            </div>
         </nav>
     </header>
 
