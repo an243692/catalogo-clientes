@@ -732,7 +732,15 @@ class EcommerceManager {
         }
 
         historyItems.innerHTML = orders.map(order => {
-            const statusText = order.status === 'completed' ? '✅ Completado' : order.status === 'cancelRequested' ? '⏳ Cancelación Solicitada' : order.status === 'cancelled' ? '❌ Cancelado' : '🔄 En Curso';
+            let statusText = '🔄 En Curso';
+            if (order.status === 'completed') {
+                statusText = '✅ Completado';
+            } else if (order.status === 'cancelRequested') {
+                statusText = '⏳ Cancelación Solicitada';
+            } else if (order.status === 'cancelled') {
+                statusText = '❌ Cancelado';
+            }
+            
             const statusClass = order.status === 'completed' ? 'completed' : order.status === 'cancelRequested' ? 'cancel-requested' : order.status === 'cancelled' ? 'cancelled' : 'pending';
             let actionButtons = '';
             if (order.status === 'pending') {
