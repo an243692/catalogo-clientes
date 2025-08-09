@@ -44,7 +44,7 @@ class AdminManager {
         this.users = [];
         this.payments = [];
         this.editingProductId = null;
-        this.currentTab = 'dashboard';
+        this.currentTab = 'products';
         this.productImages = [];
         this.primaryImageIndex = 0;
         this.expandedCategories = new Set();
@@ -695,6 +695,7 @@ class AdminManager {
                 const images = product.images || [product.imageUrl];
                 const individualPrice = product.price || 0;
                 const wholesalePrice = product.wholesalePrice || individualPrice * 0.8;
+                const wholesaleQuantity = product.wholesaleQuantity || 4;
                 const stock = product.stock || 0;
                 const stockClass = this.getStockStatusClass(stock);
                 const stockText = this.getStockStatusText(stock);
@@ -722,7 +723,7 @@ class AdminManager {
                                     <span class="price-value">$${parseFloat(individualPrice).toFixed(2)}</span>
                                 </div>
                                 <div class="price-item">
-                                    <span class="price-label">Mayoreo</span>
+                                    <span class="price-label">Mayoreo (${wholesaleQuantity}+)</span>
                                     <span class="price-value">$${parseFloat(wholesalePrice).toFixed(2)}</span>
                                 </div>
                             </div>
@@ -1156,6 +1157,7 @@ class AdminManager {
             
             // Recargar en paralelo para mejor rendimiento
             await Promise.all([
+                this.loadProducts(),
                 this.loadOrders(),
                 this.loadUsers(),
                 this.loadPayments()
@@ -1171,6 +1173,8 @@ class AdminManager {
                 this.renderDashboard();
             } else if (this.currentTab === 'users') {
                 this.renderUsers();
+            } else if (this.currentTab === 'products') {
+                this.renderProducts();
             }
             
             console.log('✅ Datos recargados exitosamente');
@@ -1260,6 +1264,7 @@ class AdminManager {
             description: document.getElementById('productDescription').value.trim(),
             price: parseFloat(document.getElementById('productPrice').value),
             wholesalePrice: parseFloat(document.getElementById('productWholesalePrice').value),
+            wholesaleQuantity: parseInt(document.getElementById('productWholesaleQuantity').value) || 4,
             stock: parseInt(document.getElementById('productStock').value) || 0,
             category: document.getElementById('productCategory').value.trim(),
             images: this.productImages.map(img => img.url),
@@ -1273,6 +1278,11 @@ class AdminManager {
 
         if (formData.price <= 0 || formData.wholesalePrice <= 0) {
             this.showNotification('Los precios deben ser mayores a 0', 'error');
+            return;
+        }
+
+        if (formData.wholesaleQuantity < 2) {
+            this.showNotification('La cantidad para mayoreo debe ser al menos 2', 'error');
             return;
         }
 
@@ -1342,6 +1352,7 @@ class AdminManager {
         document.getElementById('productDescription').value = product.description;
         document.getElementById('productPrice').value = product.price || 0;
         document.getElementById('productWholesalePrice').value = product.wholesalePrice || 0;
+        document.getElementById('productWholesaleQuantity').value = product.wholesaleQuantity || 4;
         document.getElementById('productStock').value = product.stock || 0;
         document.getElementById('productCategory').value = product.category;
         
@@ -1405,125 +1416,59 @@ class AdminManager {
         this.productImages = [];
         this.primaryImageIndex = 0;
         this.renderImagesPreview();
-    }
-
-    async checkStripePayments() {
-        try {
-            console.log('🔍 Verificando pagos de Stripe...');
-            
-            // Buscar pedidos con paymentId (pagos con tarjeta)
-            const cardOrders = this.orders.filter(order => order.paymentId);
-            
-            console.log('💳 Pedidos con tarjeta encontrados:', cardOrders.length);
-            
-            cardOrders.forEach(order => {
-                console.log(`📊 Pedido ${order.id}:`, {
-                    status: order.status,
-                    paymentId: order.paymentId,
-                    paymentStatus: order.paymentStatus,
-                    total: order.total
-                });
-            });
-            
-            this.showNotification(`Encontrados ${cardOrders.length} pedidos con tarjeta`, 'info');
-            
-        } catch (error) {
-            console.error('❌ Error verificando pagos:', error);
-            this.showNotification('Error al verificar pagos', 'error');
-        }
-    }
-
-    async createTestOrder() {
-        try {
-            console.log('🧪 Creando pedido de prueba...');
-            
-            const testOrderRef = push(ref(realtimeDb, 'orders'));
-            const testOrderId = testOrderRef.key;
-            
-            const testOrderData = {
-                id: testOrderId,
-                userId: 'test-user-123',
-                userInfo: {
-                    fullName: 'Cliente de Prueba',
-                    email: 'test@example.com',
-                    phone: '555-1234',
-                    location: 'Ciudad de México'
-                },
-                items: [
-                    {
-                        id: 'test-product-1',
-                        name: 'Producto de Prueba',
-                        priceType: 'individual',
-                        quantity: 2,
-                        totalPrice: 50,
-                        unitPrice: 25,
-                        wholesalePrice: 20
-                    }
-                ],
-                total: 50,
-                timestamp: Date.now(),
-                status: 'pending',
-                paymentMethod: 'cash',
-                deliveryInfo: {
-                    type: 'pickup',
-                    store: 'Tienda Principal'
-                }
-            };
-            
-            await set(testOrderRef, testOrderData);
-            
-            console.log('✅ Pedido de prueba creado:', testOrderId);
-            this.showNotification('Pedido de prueba creado exitosamente', 'success');
-            
-            // Recargar datos
-            await this.reloadData();
-            
-        } catch (error) {
-            console.error('❌ Error creando pedido de prueba:', error);
-            this.showNotification('Error al crear pedido de prueba', 'error');
-        }
+        // Reset wholesale quantity to default
+        document.getElementById('productWholesaleQuantity').value = 4;
     }
 
     async generateThermalTicket(orderId) {
+        // Buscar el pedido por ID exacto
         const order = this.orders.find(o => o.id === orderId);
         if (!order) {
             this.showNotification('Pedido no encontrado', 'error');
             return;
         }
 
-        // Populate ticket template with enhanced information
+        // Elementos del ticket
+        const ticket = document.getElementById('thermalTicket');
         const ticketDate = document.getElementById('ticketDate');
         const ticketOrderId = document.getElementById('ticketOrderId');
         const ticketCustomerName = document.getElementById('ticketCustomerName');
         const ticketCustomerPhone = document.getElementById('ticketCustomerPhone');
         const ticketCustomerEmail = document.getElementById('ticketCustomerEmail');
-        const ticketPaymentInfo = document.getElementById('ticketPaymentInfo');
         const ticketDeliveryInfo = document.getElementById('ticketDeliveryInfo');
         const ticketItems = document.getElementById('ticketItems');
         const ticketTotal = document.getElementById('ticketTotal');
 
-        // Set date and order ID
+        // Validar existencia de elementos
+        if (!ticket || !ticketDate || !ticketOrderId || !ticketCustomerName || !ticketCustomerPhone ||
+            !ticketCustomerEmail || !ticketDeliveryInfo || !ticketItems || !ticketTotal) {
+            console.error('Faltan elementos del ticket en el DOM');
+            this.showNotification('Error: faltan elementos del ticket', 'error');
+            return;
+        }
+
+        // Fecha e ID
         ticketDate.textContent = new Date(order.timestamp).toLocaleString('es-ES');
         ticketOrderId.textContent = `PEDIDO #${order.id.slice(-6)}`;
 
-        // Customer information
+        // Cliente
         ticketCustomerName.textContent = order.userInfo?.fullName || 'Cliente';
         ticketCustomerPhone.textContent = `TEL: ${order.userInfo?.phone || 'N/A'}`;
         ticketCustomerEmail.textContent = `EMAIL: ${order.userInfo?.email || 'N/A'}`;
 
-        // Payment information
-        const paymentMethod = order.paymentMethod || 'cash';
-        const paymentText = paymentMethod === 'card' ? 'TARJETA (MERCADO PAGO)' : 'EFECTIVO';
-        ticketPaymentInfo.innerHTML = `
-            <div class="ticket-payment-title">METODO DE PAGO</div>
-            <div class="ticket-payment-details">${paymentText}</div>
-        `;
-
-        // Delivery information
+        // Información combinada de pago y entrega
         let deliveryHTML = '';
+        
+        // Método de pago
+        const paymentMethod = order.paymentMethod || 'cash';
+        const paymentText = paymentMethod === 'card' ? 'TARJETA (STRIPE)' : 'EFECTIVO';
+        
+        // Información de entrega
         if (order.deliveryInfo) {
             if (order.deliveryInfo.type === 'pickup') {
                 deliveryHTML = `
+                    <div class="ticket-delivery-title">METODO DE PAGO</div>
+                    <div class="ticket-delivery-details">${paymentText}</div>
                     <div class="ticket-delivery-title">RECOGER EN TIENDA</div>
                     <div class="ticket-delivery-details">TIENDA: ${order.deliveryInfo.store || 'Principal'}</div>
                 `;
@@ -1534,39 +1479,45 @@ class AdminManager {
                     order.deliveryInfo.state,
                     order.deliveryInfo.zip
                 ].filter(part => part && part.trim()).join(', ');
-                
                 deliveryHTML = `
+                    <div class="ticket-delivery-title">METODO DE PAGO</div>
+                    <div class="ticket-delivery-details">${paymentText}</div>
                     <div class="ticket-delivery-title">ENVIO A DOMICILIO</div>
                     <div class="ticket-delivery-details">DIR: ${fullAddress}</div>
                     ${order.deliveryInfo.instructions ? `<div class="ticket-delivery-details">NOTA: ${order.deliveryInfo.instructions}</div>` : ''}
                 `;
             }
+        } else {
+            deliveryHTML = `
+                <div class="ticket-delivery-title">METODO DE PAGO</div>
+                <div class="ticket-delivery-details">${paymentText}</div>
+            `;
         }
         ticketDeliveryInfo.innerHTML = deliveryHTML;
 
-        // Format items for thermal ticket
+        // Items del pedido (con validación de datos)
         let itemsHTML = '';
-        order.items.forEach(item => {
+        (order.items || []).forEach(item => {
+            const unitPrice = Number(item.unitPrice) || 0;
+            const totalPrice = Number(item.totalPrice) || 0;
             itemsHTML += `
                 <div class="ticket-item">
                     <div class="ticket-item-name">${item.name}</div>
                     <div class="ticket-item-details">
-                        ${item.quantity} x $${item.unitPrice.toFixed(2)} 
+                        ${item.quantity} x $${unitPrice.toFixed(2)} 
                         ${item.priceType === 'wholesale' ? '(MAYOREO)' : ''}
                     </div>
-                    <div class="ticket-item-price">$${item.totalPrice.toFixed(2)}</div>
+                    <div class="ticket-item-price">$${totalPrice.toFixed(2)}</div>
                 </div>
             `;
         });
-
         ticketItems.innerHTML = itemsHTML;
-        ticketTotal.textContent = `TOTAL: $${order.total.toFixed(2)}`;
 
-        // Show ticket and print
-        const ticket = document.getElementById('thermalTicket');
+        // Total
+        ticketTotal.textContent = `TOTAL: $${(Number(order.total) || 0).toFixed(2)}`;
+
+        // Mostrar y auto-imprimir
         ticket.style.display = 'block';
-        
-        // Wait a moment for rendering then print
         setTimeout(() => {
             window.print();
             ticket.style.display = 'none';
