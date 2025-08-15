@@ -204,7 +204,7 @@ body {
 
 /* Header */
 .header {
-    background: var(--gradient-primary);
+    background:  #3a5f8da9;
     backdrop-filter: blur(20px);
     border-bottom: 2px solid hsl(var(--border));
     position: sticky;
@@ -250,6 +250,7 @@ body {
     box-shadow: var(--shadow-sm);
     transition: var(--transition-bounce);
     border: 2px solid hsl(var(--border-accent));
+    background: var(--logo);
 }
 
 .logo-image:hover {
