@@ -62,6 +62,7 @@ class EcommerceManager {
         this.modalCurrentImageIndex = 0;
         this.modalAutoSlideInterval = null;
         this.categoryIcons = this.initializeCategoryIcons();
+        this.featuresCarouselInterval = null;
         this.init();
     }
 
@@ -184,6 +185,17 @@ class EcommerceManager {
         this.renderCategories();
         this.updateCartUI();
         this.setupPasswordToggles();
+        this.initializeFeaturesCarousel();
+    }
+
+    initializeFeaturesCarousel() {
+        // El carrusel ya está animado con CSS, pero podemos agregar lógica adicional si es necesaria
+        const carousel = document.getElementById('featuresCarousel');
+        if (carousel) {
+            // Duplicar los elementos para un scroll infinito más suave
+            const originalItems = carousel.innerHTML;
+            carousel.innerHTML = originalItems + originalItems;
+        }
     }
 
     setupPasswordToggles() {
