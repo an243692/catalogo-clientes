@@ -1220,23 +1220,20 @@ class AdminManager {
             
             if (orderSnapshot.exists()) {
                 const orderData = orderSnapshot.val();
-                
-                // Restore stock for each item
-                for (const item of orderData.items) {
-                    const product = this.products.find(p => p.id === item.id);
-                    if (product) {
-                        const productRef = doc(db, 'products', item.id);
-                        const newStock = (product.stock || 0) + item.quantity;
-                        await updateDoc(productRef, {
-                            stock: newStock
-                        });
+                // Restaurar stock solo si hay items
+                if (orderData.items && Array.isArray(orderData.items)) {
+                    for (const item of orderData.items) {
+                        const product = this.products.find(p => p.id === item.id);
+                        if (product) {
+                            const productRef = doc(db, 'products', item.id);
+                            const newStock = (product.stock || 0) + item.quantity;
+                            await updateDoc(productRef, { stock: newStock });
+                        }
                     }
                 }
             }
-
-            // Remove the order completely from the database
+            // Eliminar el pedido aunque falte info de pago
             await remove(orderRef);
-
             this.showNotification('Pedido cancelado y stock restaurado exitosamente', 'success');
             await this.reloadData();
             if (this.currentTab === 'users') {
