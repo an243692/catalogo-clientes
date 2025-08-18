@@ -116,11 +116,21 @@ app.post('/stripe/webhook', async (req, res) => {
         const expiredOrderId = event.data.object.metadata.orderId;
         if (expiredOrderId) {
           const expiredOrderRef = admin.database().ref(`orders/${expiredOrderId.replace('order_', '')}`);
-          await expiredOrderRef.update({
-            status: 'expired',
-            updatedAt: admin.database.ServerValue.TIMESTAMP
-          });
-          console.log('❌ Pedido marcado como expirado:', expiredOrderId);
+          // Leer el estado actual del pedido
+          const orderSnapshot = await expiredOrderRef.once('value');
+          const orderData = orderSnapshot.val();
+          if (orderData && orderData.status === 'pending') {
+            // Eliminar el pedido si sigue pendiente
+            await expiredOrderRef.remove();
+            console.log('🗑️ Pedido pendiente eliminado tras expiración:', expiredOrderId);
+          } else {
+            // Si ya no está pendiente, solo marcar como expirado (por compatibilidad)
+            await expiredOrderRef.update({
+              status: 'expired',
+              updatedAt: admin.database.ServerValue.TIMESTAMP
+            });
+            console.log('❌ Pedido marcado como expirado:', expiredOrderId);
+          }
         }
         break;
 
