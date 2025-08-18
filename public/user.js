@@ -1,3 +1,28 @@
+// Detectar si estamos en la página de cancelación de Stripe
+if (window.location.pathname === '/cancel') {
+    // Buscar el último pedido pendiente del usuario y eliminarlo
+    (async () => {
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                const ordersRef = ref(realtimeDb, 'orders');
+                const snapshot = await get(ordersRef);
+                if (snapshot.exists()) {
+                    const allOrders = snapshot.val();
+                    const pendingOrderId = Object.keys(allOrders).find(key => allOrders[key].userId === user.uid && allOrders[key].status === 'pending');
+                    if (pendingOrderId) {
+                        await remove(ref(realtimeDb, `orders/${pendingOrderId}`));
+                        // Opcional: notificar al usuario
+                        alert('El pedido pendiente ha sido eliminado porque cancelaste el pago.');
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error eliminando pedido pendiente tras cancelar pago:', err);
+        }
+    })();
+}
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { 
     getFirestore, 
