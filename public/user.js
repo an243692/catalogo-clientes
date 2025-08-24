@@ -1219,6 +1219,12 @@ class EcommerceManager {
             this.showNotification('Debes iniciar sesión para realizar un pedido', 'error');
             return;
         }
+        // [CASCADE-VALIDATION] Extra validation to avoid ghost orders
+        if (!this.userProfile.fullName || !this.userProfile.email) {
+            console.error('[CASCADE-VALIDATION] Attempt to create order without valid user profile:', this.userProfile);
+            this.showNotification('Error: Tu perfil de usuario está incompleto. Por favor revisa tus datos antes de ordenar.', 'error');
+            return;
+        }
 
         if (this.cart.length === 0) {
             this.showNotification('Tu carrito está vacío', 'error');
