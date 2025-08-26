@@ -2128,7 +2128,7 @@ async function processPaymentWithStripe(cart) {
       status: 'pending',
       paymentMethod: 'card',
       sessionId: sessionId,
-      expiresAt: Date.now() + (15 * 60 * 1000), // Reducido a 15 minutos
+      expiresAt: Date.now() + (30 * 60 * 1000), // 30 minutos (consistente con Stripe)
       metadata: {
         browser: navigator.userAgent,
         url: window.location.href,
@@ -2351,8 +2351,8 @@ setInterval(async () => {
   if (pendingSessionId && pendingTimestamp) {
     const timeElapsed = Date.now() - parseInt(pendingTimestamp);
     
-    // Si han pasado más de 8 minutos, limpiar automáticamente
-    if (timeElapsed > 8 * 60 * 1000) {
+    // Si han pasado más de 25 minutos, limpiar automáticamente (antes de que expire Stripe)
+    if (timeElapsed > 25 * 60 * 1000) {
       console.log('⏰ Heartbeat: Tiempo de sesión excedido, limpiando pedido');
       await ecommerceManager.handlePaymentAbandonment();
     }
