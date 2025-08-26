@@ -203,7 +203,7 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-      expires_at: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutos desde ahora
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutos desde ahora (mínimo requerido por Stripe)
       metadata: {
         orderId: orderId,
         userEmail: userInfo.email,
@@ -220,7 +220,8 @@ app.post('/create-checkout-session', async (req, res) => {
     console.log('✅ Sesión de Stripe creada exitosamente:', {
       sessionId: session.id,
       orderId: orderId,
-      expiresAt: new Date(session.expires_at * 1000).toISOString()
+      expiresAt: new Date(session.expires_at * 1000).toISOString(),
+      duration: '30 minutos'
     });
 
     res.json({ url: session.url });
