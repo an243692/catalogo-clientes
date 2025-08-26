@@ -112,37 +112,62 @@ app.post('/stripe/webhook', async (req, res) => {
         break;
 
       case 'checkout.session.expired':
-        console.log('⌛ Sesión expirada:', event.data.object.id);
+        console.log('⏰ Sesión de checkout expirada:', event.data.object.id);
         const expiredOrderId = event.data.object.metadata.orderId;
+        
         if (expiredOrderId) {
           const expiredOrderRef = admin.database().ref(`orders/${expiredOrderId.replace('order_', '')}`);
-          // Leer el estado actual del pedido
-          const orderSnapshot = await expiredOrderRef.once('value');
-          const orderData = orderSnapshot.val();
-          if (orderData && orderData.status === 'pending') {
-            // Eliminar el pedido si sigue pendiente
-            await expiredOrderRef.remove();
-            console.log('🗑️ Pedido pendiente eliminado tras expiración:', expiredOrderId);
-          } else {
-            // Si ya no está pendiente, solo marcar como expirado (por compatibilidad)
-            await expiredOrderRef.update({
-              status: 'expired',
-              updatedAt: admin.database.ServerValue.TIMESTAMP
-            });
-            console.log('❌ Pedido marcado como expirado:', expiredOrderId);
+          
+          try {
+            // Leer el estado actual del pedido
+            const orderSnapshot = await expiredOrderRef.once('value');
+            const orderData = orderSnapshot.val();
+            
+            if (orderData) {
+              if (orderData.status === 'pending') {
+                // Eliminar completamente el pedido si sigue pendiente
+                await expiredOrderRef.remove();
+                console.log('🗑️ Pedido pendiente eliminado por expiración de Stripe:', expiredOrderId);
+              } else {
+                console.log(`📋 Pedido ${expiredOrderId} ya no está pendiente (estado: ${orderData.status})`);
+              }
+            } else {
+              console.log(`🔍 Pedido ${expiredOrderId} ya no existe en Firebase`);
+            }
+          } catch (error) {
+            console.error(`❌ Error al procesar expiración de ${expiredOrderId}:`, error);
+          }
+        }
+        break;
+
+      // Agregar manejo para cancelaciones desde Stripe
+      case 'payment_intent.canceled':
+        console.log('❌ PaymentIntent cancelado:', event.data.object.id);
+        // Stripe maneja esto automáticamente, pero podemos agregar lógica adicional si es necesario
+        break;
+        
+      case 'checkout.session.async_payment_failed':
+        console.log('❌ Pago asíncrono fallido:', event.data.object.id);
+        const failedOrderId = event.data.object.metadata?.orderId;
+        if (failedOrderId) {
+          const failedOrderRef = admin.database().ref(`orders/${failedOrderId.replace('order_', '')}`);
+          const snapshot = await failedOrderRef.once('value');
+          if (snapshot.exists() && snapshot.val().status === 'pending') {
+            await failedOrderRef.remove();
+            console.log('🗑️ Pedido eliminado por fallo de pago asíncrono:', failedOrderId);
           }
         }
         break;
 
       default:
-        console.log(`Evento no manejado: ${event.type}`);
+        console.log(`📋 Evento de Stripe no manejado: ${event.type}`);
     }
 
-    res.json({received: true});
+    res.json({received: true, processed: true});
   } catch (err) {
-    console.error('Error al procesar webhook:', err);
-    // No devolver error 500 para evitar que Stripe reintente
-    res.json({received: true, error: err.message});
+    console.error('❌ Error al procesar webhook de Stripe:', err);
+    // Enviar respuesta exitosa para evitar reintentos innecesarios de Stripe
+    res.json({received: true, error: err.message, processed: false});
   }
 });
 
@@ -178,11 +203,24 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cancel`,
+      expires_at: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutos desde ahora
       metadata: {
         orderId: orderId,
-        userEmail: userInfo.email
+        userEmail: userInfo.email,
+        timestamp: Date.now().toString(),
+        totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toString()
       },
-      customer_email: userInfo.email
+      customer_email: userInfo.email,
+      billing_address_collection: 'required', // Solicitar dirección de facturación
+      phone_number_collection: {
+        enabled: true
+      }
+    });
+    
+    console.log('✅ Sesión de Stripe creada exitosamente:', {
+      sessionId: session.id,
+      orderId: orderId,
+      expiresAt: new Date(session.expires_at * 1000).toISOString()
     });
 
     res.json({ url: session.url });
