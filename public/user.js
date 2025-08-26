@@ -1,24 +1,75 @@
 // Detectar si estamos en la página de cancelación de Stripe
-if (window.location.pathname === '/cancel') {
-    // Buscar el último pedido pendiente del usuario y eliminarlo
+if (window.location.pathname === '/cancel' || window.location.pathname.includes('/cancel')) {
+    console.log('🚫 Usuario en página de cancelación - iniciando limpieza automática');
+    
+    // Limpieza inmediata y completa al detectar cancelación
     (async () => {
         try {
-            const user = auth.currentUser;
-            if (user) {
+            // Obtener información de la sesión actual
+            const sessionId = localStorage.getItem('pendingOrderSession');
+            const pendingOrderId = localStorage.getItem('pendingOrderId');
+            const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+            
+            let cleanedCount = 0;
+            
+            // Si tenemos información específica de la sesión, limpiar ese pedido
+            if (sessionId && pendingOrderId) {
+                try {
+                    const specificOrderRef = ref(realtimeDb, `orders/${pendingOrderId.replace('order_', '')}`);
+                    const snapshot = await get(specificOrderRef);
+                    
+                    if (snapshot.exists()) {
+                        const order = snapshot.val();
+                        if (order.status === 'pending' && order.sessionId === sessionId) {
+                            await remove(specificOrderRef);
+                            cleanedCount++;
+                            console.log(`✅ Pedido específico eliminado: ${pendingOrderId}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al eliminar pedido específico:', error);
+                }
+            }
+            
+            // Limpieza adicional por email de usuario
+            if (userProfile.email) {
                 const ordersRef = ref(realtimeDb, 'orders');
                 const snapshot = await get(ordersRef);
+                
                 if (snapshot.exists()) {
                     const allOrders = snapshot.val();
-                    const pendingOrderId = Object.keys(allOrders).find(key => allOrders[key].userId === user.uid && allOrders[key].status === 'pending');
-                    if (pendingOrderId) {
-                        await remove(ref(realtimeDb, `orders/${pendingOrderId}`));
-                        // Opcional: notificar al usuario
-                        alert('El pedido pendiente ha sido eliminado porque cancelaste el pago.');
+                    const currentTime = Date.now();
+                    
+                    for (const [orderId, order] of Object.entries(allOrders)) {
+                        const shouldCleanup = (
+                            order.status === 'pending' && 
+                            order.paymentMethod === 'card' &&
+                            order.userInfo?.email === userProfile.email &&
+                            (currentTime - order.timestamp > 2 * 60 * 1000) // Más de 2 minutos
+                        );
+                        
+                        if (shouldCleanup) {
+                            try {
+                                await remove(ref(realtimeDb, `orders/${orderId}`));
+                                cleanedCount++;
+                                console.log(`🧹 Pedido pendiente adicional eliminado: ${orderId}`);
+                            } catch (error) {
+                                console.error(`Error al eliminar pedido ${orderId}:`, error);
+                            }
+                        }
                     }
                 }
             }
+            
+            // Limpiar localStorage
+            localStorage.removeItem('pendingOrderSession');
+            localStorage.removeItem('pendingOrderId');
+            localStorage.removeItem('pendingOrderTimestamp');
+            
+            console.log(`🎯 Limpieza completada: ${cleanedCount} pedido(s) eliminado(s)`);
+            
         } catch (err) {
-            console.error('Error eliminando pedido pendiente tras cancelar pago:', err);
+            console.error('❌ Error en limpieza tras cancelación:', err);
         }
     })();
 }
@@ -98,6 +149,7 @@ class EcommerceManager {
             'technology': '🤖',
             'tech': '🤖',
             'electrónicos': '📱',
+            'electrónica': '📱'	,
             'electronicos': '📱',
             'electronics': '📱',
             'papelería': '✏️',
@@ -149,6 +201,8 @@ class EcommerceManager {
             'automovil': '🚗',
             'auto': '🚗',
             'car': '🚗',
+            'linea blanca': '🧺🧼👕',
+            'comida':'🍽️',
             'libros': '📚',
             'books': '📚',
             'música': '🎵',
@@ -180,7 +234,8 @@ class EcommerceManager {
             'fishing': '🎣',
             'caza': '🏹',
             'hunting': '🏹',
-            'default': '📦'
+            'default': '📦',
+            'vinoS': '🍷' 
         };
     }
 
@@ -211,6 +266,53 @@ class EcommerceManager {
         this.updateCartUI();
         this.setupPasswordToggles();
         this.initializeFeaturesCarousel();
+        
+        // Verificar si hay sesiones de pago abandonadas al cargar
+        await this.checkForAbandonedPaymentSessions();
+        
+        // Limpiar pedidos pendientes abandonados al cargar la página
+        await this.cleanupAbandonedOrders();
+    }
+
+    // Función para verificar sesiones de pago abandonadas al cargar la página
+    async checkForAbandonedPaymentSessions() {
+        try {
+            const pendingSessionId = localStorage.getItem('pendingOrderSession');
+            const pendingTimestamp = localStorage.getItem('pendingOrderTimestamp');
+            const redirectingToStripe = localStorage.getItem('redirectingToStripe');
+            const stripeRedirectTime = localStorage.getItem('stripeRedirectTime');
+            
+            // Si hay una sesión pendiente y signos de que fue a Stripe
+            if (pendingSessionId && pendingTimestamp) {
+                const timeElapsed = Date.now() - parseInt(pendingTimestamp);
+                
+                // Si han pasado más de 2 minutos desde que se creó la sesión
+                if (timeElapsed > 2 * 60 * 1000) {
+                    console.log('🔍 Detectada posible sesión de pago abandonada al cargar página');
+                    console.log(`⏰ Tiempo transcurrido: ${Math.round(timeElapsed / 1000)}s`);
+                    
+                    // Si había una redirección a Stripe hace más de 1 minuto
+                    if (redirectingToStripe === 'true' && stripeRedirectTime) {
+                        const timeSinceRedirect = Date.now() - parseInt(stripeRedirectTime);
+                        if (timeSinceRedirect > 60 * 1000) { // 1 minuto
+                            console.log('🧹 Ejecutando limpieza por sesión abandonada detectada');
+                            await this.handlePaymentAbandonment();
+                        }
+                    } else if (timeElapsed > 5 * 60 * 1000) {
+                        // Si no hay información de redirección pero han pasado más de 5 minutos
+                        console.log('🧹 Ejecutando limpieza por sesión muy antigua');
+                        await this.handlePaymentAbandonment();
+                    }
+                }
+            }
+            
+            // Limpiar marcadores de redirección después de verificar
+            localStorage.removeItem('redirectingToStripe');
+            localStorage.removeItem('stripeRedirectTime');
+            
+        } catch (error) {
+            console.error('❌ Error al verificar sesiones de pago abandonadas:', error);
+        }
     }
 
     initializeFeaturesCarousel() {
@@ -1813,6 +1915,136 @@ class EcommerceManager {
         }, 4000);
     }
 
+    // Función mejorada para limpiar pedidos abandonados
+    async cleanupAbandonedOrders() {
+        try {
+            console.log('🧹 Iniciando limpieza de pedidos abandonados...');
+            
+            // Verificar si hay información de sesión pendiente
+            const pendingSessionId = localStorage.getItem('pendingOrderSession');
+            const pendingOrderId = localStorage.getItem('pendingOrderId');
+            const pendingTimestamp = localStorage.getItem('pendingOrderTimestamp');
+            
+            let cleanedCount = 0;
+            
+            // Limpieza de sesión específica con tiempo más corto
+            if (pendingSessionId && pendingOrderId && pendingTimestamp) {
+                const timeElapsed = Date.now() - parseInt(pendingTimestamp);
+                
+                // Reducir tiempo de espera a 5 minutos para mejor UX
+                if (timeElapsed > 5 * 60 * 1000) {
+                    try {
+                        const orderRef = ref(realtimeDb, `orders/${pendingOrderId.replace('order_', '')}`);
+                        const snapshot = await get(orderRef);
+                        
+                        if (snapshot.exists()) {
+                            const order = snapshot.val();
+                            if (order.status === 'pending' && order.sessionId === pendingSessionId) {
+                                await remove(orderRef);
+                                cleanedCount++;
+                                console.log(`🗑️ Pedido abandonado limpiado: ${pendingOrderId}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error al limpiar pedido específico:', error);
+                    }
+                    
+                    // Limpiar localStorage
+                    this.clearPendingOrderInfo();
+                }
+            }
+            
+            // Limpieza general de pedidos expirados
+            if (this.userProfile?.email) {
+                const ordersRef = ref(realtimeDb, 'orders');
+                const snapshot = await get(ordersRef);
+                
+                if (snapshot.exists()) {
+                    const allOrders = snapshot.val();
+                    const currentTime = Date.now();
+                    
+                    for (const [orderId, order] of Object.entries(allOrders)) {
+                        // Criterios mejorados para limpieza
+                        const shouldCleanup = (
+                            order.status === 'pending' && 
+                            order.paymentMethod === 'card' &&
+                            (
+                                // Pedidos del mismo usuario que tengan más de 10 minutos
+                                (order.userInfo?.email === this.userProfile.email && 
+                                 currentTime - order.timestamp > 10 * 60 * 1000) ||
+                                // Pedidos con expiresAt que ya expiraron
+                                (order.expiresAt && currentTime > order.expiresAt) ||
+                                // Pedidos muy antiguos (más de 30 minutos)
+                                (currentTime - order.timestamp > 30 * 60 * 1000) ||
+                                // Pedidos sin sessionId válido (huérfanos)
+                                (!order.sessionId || order.sessionId === '')
+                            )
+                        );
+                        
+                        if (shouldCleanup) {
+                            try {
+                                await remove(ref(realtimeDb, `orders/${orderId}`));
+                                cleanedCount++;
+                                console.log(`♻️ Pedido expirado eliminado: ${orderId}`);
+                            } catch (error) {
+                                console.error(`❌ Error al eliminar pedido ${orderId}:`, error);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Log del resultado
+            if (cleanedCount > 0) {
+                console.log(`✅ Limpieza completada: ${cleanedCount} pedido(s) eliminado(s)`);
+            } else {
+                console.log('✨ No se encontraron pedidos para limpiar');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error en limpieza de pedidos abandonados:', error);
+        }
+    }
+
+    // Función para limpiar información de pedido pendiente en localStorage
+    clearPendingOrderInfo() {
+        localStorage.removeItem('pendingOrderSession');
+        localStorage.removeItem('pendingOrderId');
+        localStorage.removeItem('pendingOrderTimestamp');
+        localStorage.removeItem('sessionInfo');
+        localStorage.removeItem('redirectingToStripe');
+        localStorage.removeItem('stripeRedirectTime');
+        localStorage.removeItem('pageAwayTime');
+        localStorage.removeItem('pageClosing');
+        console.log('🧹 Información de pedido pendiente completamente limpiada del localStorage');
+    }
+    
+    // Función para detectar abandono de pago y limpiar automáticamente
+    async handlePaymentAbandonment() {
+        try {
+            const pendingSessionId = localStorage.getItem('pendingOrderSession');
+            const pendingOrderId = localStorage.getItem('pendingOrderId');
+            
+            if (pendingSessionId && pendingOrderId) {
+                const orderRef = ref(realtimeDb, `orders/${pendingOrderId.replace('order_', '')}`);
+                const snapshot = await get(orderRef);
+                
+                if (snapshot.exists()) {
+                    const order = snapshot.val();
+                    if (order.status === 'pending' && order.sessionId === pendingSessionId) {
+                        await remove(orderRef);
+                        console.log(`🚫 Pedido abandonado eliminado inmediatamente: ${pendingOrderId}`);
+                        this.showNotification('Pedido cancelado y eliminado correctamente', 'info');
+                    }
+                }
+                
+                this.clearPendingOrderInfo();
+            }
+        } catch (error) {
+            console.error('❌ Error al manejar abandono de pago:', error);
+        }
+    }
+
     showError(message) {
         this.showNotification(message, 'error');
     }
@@ -1826,6 +2058,9 @@ async function processPaymentWithStripe(cart) {
   }
 
   try {
+    // Limpiar pedidos pendientes previos antes de crear uno nuevo
+    await cleanupPreviousPendingOrders();
+
     // Actualizar precios basado en cantidad individual por producto
     const cartWithUpdatedPrices = cart.map(item => {
       const product = ecommerceManager.products.find(p => p.id === item.id);
@@ -1862,6 +2097,26 @@ async function processPaymentWithStripe(cart) {
 
     const orderRef = push(ref(realtimeDb, 'orders'));
     const orderId = `order_${orderRef.key}`;
+    
+    // Generar ID de sesión único para tracking
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Guardar información de seguimiento de sesión mejorada
+    const sessionInfo = {
+      sessionId: sessionId,
+      orderId: orderId,
+      timestamp: Date.now(),
+      userEmail: ecommerceManager.userProfile?.email,
+      cartSize: cartWithUpdatedPrices.length,
+      total: total
+    };
+    
+    localStorage.setItem('pendingOrderSession', sessionId);
+    localStorage.setItem('pendingOrderId', orderId);
+    localStorage.setItem('pendingOrderTimestamp', Date.now().toString());
+    localStorage.setItem('sessionInfo', JSON.stringify(sessionInfo));
+    
+    console.log('🔒 Sesión de pago iniciada:', sessionInfo);
 
     const orderData = {
       id: orderId,
@@ -1871,11 +2126,21 @@ async function processPaymentWithStripe(cart) {
       total: total,
       timestamp: Date.now(),
       status: 'pending',
-      paymentMethod: 'card'
+      paymentMethod: 'card',
+      sessionId: sessionId,
+      expiresAt: Date.now() + (15 * 60 * 1000), // Reducido a 15 minutos
+      metadata: {
+        browser: navigator.userAgent,
+        url: window.location.href,
+        referrer: document.referrer
+      }
     };
 
     // Guardar el pedido en Firebase
     await set(orderRef, orderData);
+
+    // Configurar limpieza automática si el usuario no regresa
+    setupAutomaticCleanup(orderId, sessionId);
 
     // Crear sesión de checkout con Stripe
     const response = await fetch('https://catalogo-clientes-0ido.onrender.com/create-checkout-session', {
@@ -1890,18 +2155,103 @@ async function processPaymentWithStripe(cart) {
 
     if (!response.ok) {
       const errorData = await response.json();
+      // Si falla el checkout, limpiar el pedido inmediatamente
+      await cleanupSpecificOrder(orderId);
       throw new Error(errorData.error || 'Error al crear la sesión de checkout');
     }
 
     const { url } = await response.json();
     
-    // Redirigir al checkout de Stripe
+    // Redirigir al checkout de Stripe con seguimiento
+    console.log('🚀 Redirigiendo a Stripe checkout:', url);
+    
+    // Marcar que estamos yendo a Stripe
+    localStorage.setItem('redirectingToStripe', 'true');
+    localStorage.setItem('stripeRedirectTime', Date.now().toString());
+    
     window.location.href = url;
 
   } catch (error) {
-    console.error('Error al procesar el pago:', error);
+    console.error('❌ Error al procesar el pago:', error);
+    
+    // Limpiar todos los datos de sesión en caso de error
+    ecommerceManager.clearPendingOrderInfo();
+    localStorage.removeItem('sessionInfo');
+    localStorage.removeItem('redirectingToStripe');
+    localStorage.removeItem('stripeRedirectTime');
+    
     ecommerceManager.showNotification(`${error.message || 'Error al procesar el pago'}`, 'error');
   }
+}
+
+// Función para limpiar pedidos pendientes previos del usuario
+async function cleanupPreviousPendingOrders() {
+  try {
+    const userProfile = ecommerceManager.userProfile;
+    if (!userProfile?.email) return;
+
+    const ordersRef = ref(realtimeDb, 'orders');
+    const snapshot = await get(ordersRef);
+    
+    if (snapshot.exists()) {
+      const allOrders = snapshot.val();
+      const currentTime = Date.now();
+      
+      for (const [orderId, order] of Object.entries(allOrders)) {
+        // Limpiar pedidos pendientes del mismo usuario que tengan más de 5 minutos
+        if (order.status === 'pending' && 
+            order.paymentMethod === 'card' &&
+            order.userInfo?.email === userProfile.email &&
+            (currentTime - order.timestamp > 5 * 60 * 1000)) {
+          
+          await remove(ref(realtimeDb, `orders/${orderId}`));
+          console.log(`Pedido pendiente previo eliminado: ${orderId}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error al limpiar pedidos pendientes previos:', error);
+  }
+}
+
+// Función para limpiar un pedido específico
+async function cleanupSpecificOrder(orderId) {
+  try {
+    await remove(ref(realtimeDb, `orders/${orderId}`));
+    console.log(`Pedido específico eliminado: ${orderId}`);
+  } catch (error) {
+    console.error('Error al eliminar pedido específico:', error);
+  }
+}
+
+// Configurar limpieza automática con timeout
+function setupAutomaticCleanup(orderId, sessionId) {
+  // Limpieza automática después de 20 minutos
+  setTimeout(async () => {
+    try {
+      const orderRef = ref(realtimeDb, `orders/${orderId}`);
+      const snapshot = await get(orderRef);
+      
+      if (snapshot.exists()) {
+        const order = snapshot.val();
+        // Solo eliminar si sigue siendo pending
+        if (order.status === 'pending' && order.sessionId === sessionId) {
+          await remove(orderRef);
+          console.log(`Pedido expirado eliminado automáticamente: ${orderId}`);
+          
+          // Limpiar localStorage si es el mismo pedido
+          const storedSessionId = localStorage.getItem('pendingOrderSession');
+          if (storedSessionId === sessionId) {
+            localStorage.removeItem('pendingOrderSession');
+            localStorage.removeItem('pendingOrderId');
+            localStorage.removeItem('pendingOrderTimestamp');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error en limpieza automática:', error);
+    }
+  }, 20 * 60 * 1000); // 20 minutos
 }
 
 window.ecommerceManager = new EcommerceManager();
@@ -1909,3 +2259,102 @@ window.ecommerceManager = new EcommerceManager();
 document.getElementById('checkout-btn').addEventListener('click', () => {
   processPaymentWithStripe(ecommerceManager.cart);
 });
+
+// Sistema mejorado de detección de regreso desde Stripe
+let visibilityCheckTimeout;
+let isAwayFromPage = false;
+
+// Detectar cuando el usuario sale de la página
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    // Usuario salió de la página
+    isAwayFromPage = true;
+    const awayTime = Date.now();
+    localStorage.setItem('pageAwayTime', awayTime.toString());
+    console.log('🚫 Usuario salió de la página');
+    
+  } else if (document.visibilityState === 'visible' && isAwayFromPage) {
+    // Usuario regresó a la página
+    isAwayFromPage = false;
+    handleUserReturn();
+  }
+});
+
+// Función para manejar el regreso del usuario
+async function handleUserReturn() {
+  console.log('✅ Usuario regresó a la página');
+  
+  const awayTime = localStorage.getItem('pageAwayTime');
+  const pendingSessionId = localStorage.getItem('pendingOrderSession');
+  const pendingTimestamp = localStorage.getItem('pendingOrderTimestamp');
+  
+  if (pendingSessionId && pendingTimestamp && awayTime) {
+    const timeAwayFromPage = Date.now() - parseInt(awayTime);
+    const totalTimeElapsed = Date.now() - parseInt(pendingTimestamp);
+    
+    console.log(`🕰️ Tiempo fuera de la página: ${Math.round(timeAwayFromPage / 1000)}s`);
+    console.log(`🕰️ Tiempo total desde pedido: ${Math.round(totalTimeElapsed / 1000)}s`);
+    
+    // Si estuvo fuera más de 30 segundos O el tiempo total es más de 3 minutos
+    if (timeAwayFromPage > 30 * 1000 || totalTimeElapsed > 3 * 60 * 1000) {
+      console.log('🧹 Iniciando limpieza por posible abandono de pago');
+      await ecommerceManager.handlePaymentAbandonment();
+    }
+    
+    // Limpiar tiempo de ausencia
+    localStorage.removeItem('pageAwayTime');
+  }
+}
+
+
+
+// Detectar navegación con el botón "Atrás" del navegador
+window.addEventListener('popstate', async (event) => {
+  console.log('⬅️ Navegación hacia atrás detectada');
+  
+  // Si el usuario navegó de regreso desde Stripe, limpiar pedidos pendientes
+  const pendingSessionId = localStorage.getItem('pendingOrderSession');
+  if (pendingSessionId) {
+    console.log('🧹 Detectado regreso desde pasarela de pagos - limpiando pedido pendiente');
+    
+    // Limpieza inmediata al usar botón atrás
+    setTimeout(async () => {
+      await ecommerceManager.handlePaymentAbandonment();
+    }, 500);
+  }
+});
+
+// Detectar cuando el usuario intenta cerrar la pestaña/navegador
+window.addEventListener('beforeunload', (event) => {
+  const pendingSessionId = localStorage.getItem('pendingOrderSession');
+  if (pendingSessionId) {
+    // Marcar que hay un cierre pendiente
+    localStorage.setItem('pageClosing', 'true');
+    console.log('⚠️ Usuario intentando cerrar página con pedido pendiente');
+  }
+});
+
+// Limpiar la marca de cierre cuando regresa
+window.addEventListener('focus', () => {
+  const wasClosing = localStorage.getItem('pageClosing');
+  if (wasClosing === 'true') {
+    localStorage.removeItem('pageClosing');
+    console.log('✅ Usuario regresó después de intento de cierre');
+  }
+});
+
+// Heartbeat para detectar sesiones abandonadas
+setInterval(async () => {
+  const pendingSessionId = localStorage.getItem('pendingOrderSession');
+  const pendingTimestamp = localStorage.getItem('pendingOrderTimestamp');
+  
+  if (pendingSessionId && pendingTimestamp) {
+    const timeElapsed = Date.now() - parseInt(pendingTimestamp);
+    
+    // Si han pasado más de 8 minutos, limpiar automáticamente
+    if (timeElapsed > 8 * 60 * 1000) {
+      console.log('⏰ Heartbeat: Tiempo de sesión excedido, limpiando pedido');
+      await ecommerceManager.handlePaymentAbandonment();
+    }
+  }
+}, 60 * 1000); // Revisar cada minuto
