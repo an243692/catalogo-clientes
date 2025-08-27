@@ -2251,7 +2251,7 @@ function setupAutomaticCleanup(orderId, sessionId) {
     } catch (error) {
       console.error('Error en limpieza automática:', error);
     }
-  }, 20 * 60 * 1000); // 20 minutos
+  }, 30 * 60 * 1000); // 30 minutos
 }
 
 window.ecommerceManager = new EcommerceManager();
