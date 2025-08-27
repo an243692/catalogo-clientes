@@ -2058,6 +2058,9 @@ async function processPaymentWithStripe(cart) {
   }
 
   try {
+    // Mostrar indicador de carga
+    ecommerceManager.showNotification('🔄 Preparando pago seguro...', 'info');
+    
     // Limpiar pedidos pendientes previos antes de crear uno nuevo
     await cleanupPreviousPendingOrders();
 
@@ -2142,6 +2145,9 @@ async function processPaymentWithStripe(cart) {
     // Configurar limpieza automática si el usuario no regresa
     setupAutomaticCleanup(orderId, sessionId);
 
+    // Mostrar progreso
+    ecommerceManager.showNotification('🔐 Creando sesión de pago...', 'info');
+    
     // Crear sesión de checkout con Stripe
     const response = await fetch('https://catalogo-clientes-0ido.onrender.com/create-checkout-session', {
       method: 'POST',
@@ -2161,6 +2167,9 @@ async function processPaymentWithStripe(cart) {
     }
 
     const { url } = await response.json();
+    
+    // Mostrar redirección
+    ecommerceManager.showNotification('🚀 Redirigiendo a pasarela de pagos...', 'success');
     
     // Redirigir al checkout de Stripe con seguimiento
     console.log('🚀 Redirigiendo a Stripe checkout:', url);
@@ -2251,7 +2260,7 @@ function setupAutomaticCleanup(orderId, sessionId) {
     } catch (error) {
       console.error('Error en limpieza automática:', error);
     }
-  }, 30 * 60 * 1000); // 30 minutos
+  }, 30 * 60 * 1000); // 30 minutos (consistente con Stripe)
 }
 
 window.ecommerceManager = new EcommerceManager();
