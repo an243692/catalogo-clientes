@@ -293,11 +293,16 @@ app.post('/create-checkout-session', async (req, res) => {
 
     // CREAR EL PEDIDO INMEDIATAMENTE EN REALTIME DATABASE (como el HTML original)
     try {
+      // Validar que userInfo tenga los datos necesarios
+      if (!userInfo || !userInfo.email) {
+        throw new Error('userInfo no contiene email válido');
+      }
+      
       const orderData = {
         orderId: orderId,
         sessionId: session.id,
-        userEmail: userInfo.email,
-        userId: userInfo.uid,
+        userEmail: userInfo.email || 'unknown@email.com',
+        userId: userInfo.uid || 'unknown',
         totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
         status: 'pending',
         paymentStatus: 'pending',
@@ -306,7 +311,7 @@ app.post('/create-checkout-session', async (req, res) => {
         updatedAt: new Date().toISOString(),
         items: items,
         userInfo: userInfo,
-        email: userInfo.email,
+        email: userInfo.email || 'unknown@email.com',
         timestamp: Date.now()
       };
       
