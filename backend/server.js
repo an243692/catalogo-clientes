@@ -166,17 +166,21 @@ app.post('/stripe/webhook', async (req, res) => {
         // Obtener referencia al pedido
         const orderRef = admin.database().ref(`orders/${orderId.replace('order_', '')}`);
        
-        // Actualizar el estado del pedido
+        // Actualizar el estado del pedido siguiendo la estructura del ejemplo
         await orderRef.update({
           status: 'completed',
           paymentId: session.id,
-          paymentStatus: session.payment_status,
+          paymentStatus: 'paid',
           updatedAt: admin.database.ServerValue.TIMESTAMP,
           paymentDetails: {
             amount: session.amount_total / 100, // Convertir de centavos a pesos
             currency: session.currency,
+            customerEmail: session.customer_email,
             paymentMethod: session.payment_method_types[0],
-            customerEmail: session.customer_email
+            paymentId: session.id,
+            paymentStatus: 'paid',
+            status: 'completed',
+            timestamp: admin.database.ServerValue.TIMESTAMP
           }
         });
 
@@ -293,26 +297,49 @@ app.post('/create-checkout-session', async (req, res) => {
 
     // CREAR EL PEDIDO INMEDIATAMENTE EN REALTIME DATABASE (como el HTML original)
     try {
-      // Validar que userInfo tenga los datos necesarios
-      if (!userInfo || !userInfo.email) {
-        throw new Error('userInfo no contiene email válido');
+      // Validar y normalizar userInfo
+      let normalizedUserInfo = userInfo || {};
+      
+      // Si userInfo está vacío o no tiene email, intentar extraer del customer_email de la sesión
+      if (!normalizedUserInfo.email && session.customer_email) {
+        normalizedUserInfo.email = session.customer_email;
+        console.log('📧 Email extraído de la sesión de Stripe:', session.customer_email);
       }
       
+      // Si aún no hay email, usar un email por defecto
+      if (!normalizedUserInfo.email) {
+        normalizedUserInfo.email = 'unknown@email.com';
+        console.log('⚠️ Usando email por defecto ya que no se encontró email válido');
+      }
+      
+      const totalAmount = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+      
       const orderData = {
+        id: orderId,
         orderId: orderId,
         sessionId: session.id,
-        userEmail: userInfo.email || 'unknown@email.com',
-        userId: userInfo.uid || 'unknown',
-        totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
+        userEmail: normalizedUserInfo.email,
+        userId: normalizedUserInfo.uid || 'unknown',
+        total: totalAmount,
+        totalAmount: totalAmount,
         status: 'pending',
         paymentStatus: 'pending',
         paymentMethod: 'stripe',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         items: items,
-        userInfo: userInfo,
-        email: userInfo.email || 'unknown@email.com',
-        timestamp: Date.now()
+        userInfo: normalizedUserInfo,
+        email: normalizedUserInfo.email,
+        timestamp: Date.now(),
+        paymentDetails: {
+          amount: totalAmount,
+          currency: 'mxn',
+          customerEmail: normalizedUserInfo.email,
+          paymentMethod: 'card',
+          paymentStatus: 'pending',
+          status: 'pending',
+          timestamp: Date.now()
+        }
       };
       
       console.log('📋 orderData a guardar:', orderData);
