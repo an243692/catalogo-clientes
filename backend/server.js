@@ -253,6 +253,10 @@ app.post('/create-checkout-session', async (req, res) => {
     const { items, orderId, userInfo } = req.body;
 
     console.log('🔍 userInfo recibido:', userInfo);
+    console.log('🔍 userInfo.email:', userInfo?.email);
+    console.log('🔍 userInfo.uid:', userInfo?.uid);
+    console.log('🔍 userInfo.fullName:', userInfo?.fullName);
+    console.log('🔍 userInfo.name:', userInfo?.name);
 
     const lineItems = items.map(item => {
       // Asegurarse de que el precio sea un número válido
@@ -377,11 +381,15 @@ app.post('/api/create-whatsapp-order', async (req, res) => {
     const { items, total, userEmail, userId, userInfo } = req.body;
     
     console.log('🔍 WhatsApp order data recibido:', { items, total, userEmail, userId, userInfo });
+    console.log('🔍 userInfo.email:', userInfo?.email);
+    console.log('🔍 userInfo.uid:', userInfo?.uid);
+    console.log('🔍 userInfo.fullName:', userInfo?.fullName);
+    console.log('🔍 userInfo.name:', userInfo?.name);
     
     const orderData = {
       orderId: `whatsapp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userEmail: userEmail || userInfo?.email || 'unknown@email.com',
-      userId: userId || userInfo?.userId || 'unknown',
+      userId: userId || userInfo?.uid || userInfo?.userId || 'unknown',
       items: items,
       total: total,
       paymentMethod: 'whatsapp',
