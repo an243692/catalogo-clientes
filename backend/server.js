@@ -74,104 +74,6 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../admin/admin.html'));
 });
 
-// Función para manejar pagos exitosos
-async function handleSuccessfulPayment(session) {
-  try {
-    const orderId = session.metadata.orderId;
-    const userEmail = session.metadata.userEmail;
-    const totalAmount = parseFloat(session.metadata.totalAmount);
-    
-    console.log('🔍 Procesando pago exitoso para:', { orderId, userEmail, totalAmount });
-    
-    // Buscar pedido existente por sessionId o orderId
-    const db = admin.database();
-    const ordersRef = db.ref('orders');
-    const snapshot = await ordersRef.once('value');
-    
-    let existingOrder = null;
-    let existingOrderKey = null;
-    
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
-        const orderData = childSnapshot.val();
-        if (orderData.sessionId === session.id || orderData.orderId === orderId) {
-          existingOrder = orderData;
-          existingOrderKey = childSnapshot.key;
-        }
-      });
-    }
-    
-    if (existingOrder) {
-      // Actualizar pedido existente
-      await ordersRef.child(existingOrderKey).update({
-        status: 'completed',
-        paymentStatus: 'paid',
-        updatedAt: new Date().toISOString(),
-        customerDetails: {
-          email: session.customer_email,
-          name: session.customer_details?.name,
-          phone: session.customer_details?.phone
-        }
-      });
-      console.log('✅ Pedido actualizado en Realtime Database:', existingOrderKey);
-      
-      // También actualizar en Firestore
-      const firestore = admin.firestore();
-      const firestoreQuery = await firestore.collection('orders')
-        .where('sessionId', '==', session.id)
-        .get();
-      
-      if (!firestoreQuery.empty) {
-        const firestoreDoc = firestoreQuery.docs[0];
-        await firestoreDoc.ref.update({
-          status: 'completed',
-          paymentStatus: 'paid',
-          updatedAt: new Date().toISOString(),
-          customerDetails: {
-            email: session.customer_email,
-            name: session.customer_details?.name,
-            phone: session.customer_details?.phone
-          }
-        });
-        console.log('✅ Pedido actualizado en Firestore:', firestoreDoc.id);
-      }
-      
-    } else {
-      // Crear nuevo pedido si no existe
-      const orderData = {
-        orderId: orderId,
-        sessionId: session.id,
-        userEmail: userEmail,
-        totalAmount: totalAmount,
-        status: 'completed',
-        paymentStatus: 'paid',
-        paymentMethod: 'stripe',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        items: session.display_items || [],
-        customerDetails: {
-          email: session.customer_email,
-          name: session.customer_details?.name,
-          phone: session.customer_details?.phone
-        }
-      };
-
-      const newOrderRef = ordersRef.push();
-      await newOrderRef.set(orderData);
-      console.log('✅ Nuevo pedido creado en Realtime Database:', newOrderRef.key);
-      
-      // También guardar en Firestore
-      const firestore = admin.firestore();
-      await firestore.collection('orders').add(orderData);
-      console.log('✅ Nuevo pedido también guardado en Firestore');
-    }
-    
-  } catch (error) {
-    console.error('❌ Error al procesar pago exitoso:', error);
-    throw error;
-  }
-}
-
 // Configurar el webhook de Stripe
 app.post('/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -190,21 +92,45 @@ app.post('/stripe/webhook', async (req, res) => {
       case 'checkout.session.completed':
         const session = event.data.object;
         console.log('💰 Pago completado:', session.id);
-        await handleSuccessfulPayment(session);
+       
+        // Actualizar el pedido en Firebase
+        const orderId = session.metadata.orderId;
+        if (!orderId) {
+          throw new Error('No se encontró el ID del pedido en los metadatos');
+        }
+
+        // Obtener referencia al pedido
+        const orderRef = admin.database().ref(`orders/${orderId.replace('order_', '')}`);
+       
+        // Actualizar el estado del pedido
+        await orderRef.update({
+          status: 'completed',
+          paymentId: session.id,
+          paymentStatus: session.payment_status,
+          updatedAt: admin.database.ServerValue.TIMESTAMP,
+          paymentDetails: {
+            amount: session.amount_total / 100, // Convertir de centavos a pesos
+            currency: session.currency,
+            paymentMethod: session.payment_method_types[0],
+            customerEmail: session.customer_email
+          }
+        });
+
+        console.log('✅ Pedido actualizado en Firebase:', orderId);
         break;
 
       case 'checkout.session.expired':
         console.log('⏰ Sesión de checkout expirada:', event.data.object.id);
         const expiredOrderId = event.data.object.metadata.orderId;
-        
+       
         if (expiredOrderId) {
           const expiredOrderRef = admin.database().ref(`orders/${expiredOrderId.replace('order_', '')}`);
-          
+         
           try {
             // Leer el estado actual del pedido
             const orderSnapshot = await expiredOrderRef.once('value');
             const orderData = orderSnapshot.val();
-            
+           
             if (orderData) {
               if (orderData.status === 'pending') {
                 // Eliminar completamente el pedido si sigue pendiente
@@ -222,8 +148,10 @@ app.post('/stripe/webhook', async (req, res) => {
         }
         break;
 
+      // Agregar manejo para cancelaciones desde Stripe
       case 'payment_intent.canceled':
         console.log('❌ PaymentIntent cancelado:', event.data.object.id);
+        // Stripe maneja esto automáticamente, pero podemos agregar lógica adicional si es necesario
         break;
        
       case 'checkout.session.async_payment_failed':
@@ -246,22 +174,18 @@ app.post('/stripe/webhook', async (req, res) => {
     res.json({received: true, processed: true});
   } catch (err) {
     console.error('❌ Error al procesar webhook de Stripe:', err);
+    // Enviar respuesta exitosa para evitar reintentos innecesarios de Stripe
     res.json({received: true, error: err.message, processed: false});
   }
 });
 
-// Endpoint para crear sesión de checkout (SIN crear pedido inmediatamente)
+// Endpoint para crear sesión de checkout
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { items, orderId, userInfo } = req.body;
 
-    console.log('🔍 userInfo recibido:', userInfo);
-    console.log('🔍 userInfo.email:', userInfo.email);
-    console.log('🔍 userInfo.userEmail:', userInfo.userEmail);
-    console.log('🔍 userInfo.uid:', userInfo.uid);
-    console.log('🔍 userInfo.userId:', userInfo.userId);
-
     const lineItems = items.map(item => {
+      // Asegurarse de que el precio sea un número válido
       const price = parseFloat(item.unitPrice) || 0;
       if (price <= 0) {
         throw new Error(`Precio inválido para el producto ${item.name}`);
@@ -275,7 +199,7 @@ app.post('/create-checkout-session', async (req, res) => {
             description: `Producto de SOFT DUCK - ${item.name}`,
             images: item.images && item.images[0] && item.images[0].startsWith('http') ? [item.images[0]] : []
           },
-          unit_amount: Math.round(price * 100),
+          unit_amount: Math.round(price * 100), // Convertir a centavos
         },
         quantity: item.quantity
       };
@@ -287,7 +211,7 @@ app.post('/create-checkout-session', async (req, res) => {
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-      expires_at: Math.floor(Date.now() / 1000) + (30 * 60),
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutos desde ahora (mínimo requerido por Stripe)
       metadata: {
         orderId: orderId,
         userEmail: userInfo.email,
@@ -295,7 +219,7 @@ app.post('/create-checkout-session', async (req, res) => {
         totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toString()
       },
       customer_email: userInfo.email,
-      billing_address_collection: 'required',
+      billing_address_collection: 'required', // Solicitar dirección de facturación
       phone_number_collection: {
         enabled: true
       }
@@ -312,123 +236,6 @@ app.post('/create-checkout-session', async (req, res) => {
   } catch (error) {
     console.error('Error al crear sesión de checkout:', error);
     res.status(500).json({ error: error.message });
-  }
-});
-
-// Endpoint para crear pedidos de WhatsApp
-app.post('/api/create-whatsapp-order', async (req, res) => {
-  try {
-    const { items, total, userEmail, userId, userInfo } = req.body;
-    
-    console.log('🔍 WhatsApp order data recibido:', { items, total, userEmail, userId, userInfo });
-    
-    const orderData = {
-      orderId: `whatsapp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userEmail: userEmail || userInfo?.email || 'unknown@email.com',
-      userId: userId || userInfo?.userId || 'unknown',
-      items: items,
-      total: total,
-      paymentMethod: 'whatsapp',
-      status: 'pending',
-      paymentStatus: 'pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userInfo: userInfo,
-      email: userEmail || userInfo?.email || 'unknown@email.com',
-      timestamp: Date.now()
-    };
-    
-    console.log('📋 WhatsApp orderData a guardar:', orderData);
-
-    // Guardar en Realtime Database
-    const db = admin.database();
-    const ordersRef = db.ref('orders');
-    const newOrderRef = ordersRef.push();
-    await newOrderRef.set(orderData);
-    
-    console.log('✅ Pedido de WhatsApp creado en Realtime Database:', newOrderRef.key);
-    
-    // También guardar en Firestore
-    const firestore = admin.firestore();
-    await firestore.collection('orders').add(orderData);
-    
-    console.log('✅ Pedido de WhatsApp también guardado en Firestore');
-    
-    res.json({ success: true, orderId: orderData.orderId });
-  } catch (error) {
-    console.error('❌ Error al crear pedido de WhatsApp:', error);
-    res.status(500).json({ error: 'Error al crear el pedido' });
-  }
-});
-
-// Endpoint para obtener pedidos de un usuario
-app.get('/api/orders/:userEmail', async (req, res) => {
-  try {
-    const { userEmail } = req.params;
-    console.log('🔍 Buscando pedidos para:', userEmail);
-    
-    const db = admin.database();
-    const ordersRef = db.ref('orders');
-    
-    // Obtener todos los pedidos para buscar manualmente
-    const allSnapshot = await ordersRef.once('value');
-    console.log('🔍 DEBUG - Todos los pedidos en la base de datos:');
-    
-    const orders = [];
-    
-    if (allSnapshot.exists()) {
-      allSnapshot.forEach((childSnapshot) => {
-        const orderData = childSnapshot.val();
-        console.log(`  - ${childSnapshot.key}: userEmail="${orderData?.userEmail}", email="${orderData?.email}", userInfo.email="${orderData?.userInfo?.email}"`);
-        
-        // Buscar por diferentes campos de email
-        let isUserOrder = false;
-        
-        // 1. Buscar por userEmail (pedidos nuevos)
-        if (orderData?.userEmail === userEmail) {
-          isUserOrder = true;
-        }
-        
-        // 2. Buscar por email directo (pedidos antiguos)
-        if (orderData?.email === userEmail) {
-          isUserOrder = true;
-        }
-        
-        // 3. Buscar por userInfo.email (pedidos con estructura userInfo)
-        if (orderData?.userInfo?.email === userEmail) {
-          isUserOrder = true;
-        }
-        
-        // 4. Buscar por userId si coincide con el usuario actual
-        if (orderData?.userId && orderData?.userInfo?.uid === orderData?.userId) {
-          if (orderData?.userInfo?.email === userEmail) {
-            isUserOrder = true;
-          }
-        }
-        
-        if (isUserOrder) {
-          orders.push({
-            id: childSnapshot.key,
-            ...orderData
-          });
-        }
-      });
-    } else {
-      console.log('  - No hay pedidos en la base de datos');
-    }
-    
-    // Ordenar por fecha de creación (más recientes primero)
-    orders.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.timestamp || 0);
-      const dateB = new Date(b.createdAt || b.timestamp || 0);
-      return dateB - dateA;
-    });
-    
-    console.log(`✅ Encontrados ${orders.length} pedidos para ${userEmail}`);
-    res.json(orders);
-  } catch (error) {
-    console.error('❌ Error al obtener pedidos:', error);
-    res.status(500).json({ error: 'Error al obtener pedidos' });
   }
 });
 
