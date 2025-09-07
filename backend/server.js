@@ -74,14 +74,68 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../admin/admin.html'));
 });
 
-// Endpoint de prueba para webhook
-app.get('/stripe/webhook-test', (req, res) => {
-  console.log('🧪 Test webhook endpoint llamado');
-  res.json({ 
-    message: 'Webhook endpoint funcionando', 
-    timestamp: new Date().toISOString(),
-    webhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET
-  });
+// Endpoint para obtener pedidos de un usuario
+app.get('/api/orders/:userEmail', async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    console.log('🔍 Buscando pedidos para:', userEmail);
+    
+    const db = admin.database();
+    const ordersRef = db.ref('orders');
+    
+    // Obtener todos los pedidos para buscar manualmente
+    const allSnapshot = await ordersRef.once('value');
+    console.log('🔍 DEBUG - Todos los pedidos en la base de datos:');
+    
+    const orders = [];
+    
+    if (allSnapshot.exists()) {
+      allSnapshot.forEach((childSnapshot) => {
+        const orderData = childSnapshot.val();
+        console.log(`  - ${childSnapshot.key}: userEmail="${orderData?.userEmail}", email="${orderData?.email}", userInfo.email="${orderData?.userInfo?.email}"`);
+        
+        // Buscar por diferentes campos de email
+        let isUserOrder = false;
+        
+        // 1. Buscar por userEmail (pedidos nuevos)
+        if (orderData?.userEmail === userEmail) {
+          isUserOrder = true;
+        }
+        
+        // 2. Buscar por email directo (pedidos antiguos)
+        if (orderData?.email === userEmail) {
+          isUserOrder = true;
+        }
+        
+        // 3. Buscar por userInfo.email (pedidos con estructura userInfo)
+        if (orderData?.userInfo?.email === userEmail) {
+          isUserOrder = true;
+        }
+        
+        if (isUserOrder) {
+          orders.push({
+            id: childSnapshot.key,
+            ...orderData
+          });
+        }
+      });
+    } else {
+      console.log('  - No hay pedidos en la base de datos');
+    }
+    
+    // Ordenar por fecha de creación (más recientes primero)
+    orders.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.timestamp || 0);
+      const dateB = new Date(b.createdAt || b.timestamp || 0);
+      return dateB - dateA;
+    });
+    
+    console.log(`✅ Encontrados ${orders.length} pedidos para ${userEmail}`);
+    res.json(orders);
+  } catch (error) {
+    console.error('❌ Error al obtener pedidos:', error);
+    res.status(500).json({ error: 'Error al obtener pedidos' });
+  }
 });
 
 // Configurar el webhook de Stripe
@@ -194,6 +248,8 @@ app.post('/create-checkout-session', async (req, res) => {
   try {
     const { items, orderId, userInfo } = req.body;
 
+    console.log('🔍 userInfo recibido:', userInfo);
+
     const lineItems = items.map(item => {
       // Asegurarse de que el precio sea un número válido
       const price = parseFloat(item.unitPrice) || 0;
@@ -234,6 +290,40 @@ app.post('/create-checkout-session', async (req, res) => {
         enabled: true
       }
     });
+
+    // CREAR EL PEDIDO INMEDIATAMENTE EN REALTIME DATABASE (como el HTML original)
+    try {
+      const orderData = {
+        orderId: orderId,
+        sessionId: session.id,
+        userEmail: userInfo.email,
+        userId: userInfo.uid,
+        totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
+        status: 'pending',
+        paymentStatus: 'pending',
+        paymentMethod: 'stripe',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        items: items,
+        userInfo: userInfo,
+        email: userInfo.email,
+        timestamp: Date.now()
+      };
+      
+      console.log('📋 orderData a guardar:', orderData);
+
+      // Guardar en Realtime Database
+      const db = admin.database();
+      const ordersRef = db.ref('orders');
+      const newOrderRef = ordersRef.push();
+      await newOrderRef.set(orderData);
+      
+      console.log('✅ Pedido de Stripe creado en Realtime Database:', newOrderRef.key);
+      
+    } catch (orderError) {
+      console.error('❌ Error al crear pedido de Stripe:', orderError);
+      // Continuar con la creación de la sesión aunque falle el registro del pedido
+    }
    
     console.log('✅ Sesión de Stripe creada exitosamente:', {
       sessionId: session.id,
@@ -249,10 +339,49 @@ app.post('/create-checkout-session', async (req, res) => {
   }
 });
 
+// Endpoint para crear pedidos de WhatsApp
+app.post('/api/create-whatsapp-order', async (req, res) => {
+  try {
+    const { items, total, userEmail, userId, userInfo } = req.body;
+    
+    console.log('🔍 WhatsApp order data recibido:', { items, total, userEmail, userId, userInfo });
+    
+    const orderData = {
+      orderId: `whatsapp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userEmail: userEmail || userInfo?.email || 'unknown@email.com',
+      userId: userId || userInfo?.userId || 'unknown',
+      items: items,
+      total: total,
+      paymentMethod: 'whatsapp',
+      status: 'pending',
+      paymentStatus: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userInfo: userInfo,
+      email: userEmail || userInfo?.email || 'unknown@email.com',
+      timestamp: Date.now()
+    };
+    
+    console.log('📋 WhatsApp orderData a guardar:', orderData);
+
+    // Guardar en Realtime Database
+    const db = admin.database();
+    const ordersRef = db.ref('orders');
+    const newOrderRef = ordersRef.push();
+    await newOrderRef.set(orderData);
+    
+    console.log('✅ Pedido de WhatsApp creado en Realtime Database:', newOrderRef.key);
+    
+    res.json({ success: true, orderId: orderData.orderId });
+  } catch (error) {
+    console.error('❌ Error al crear pedido de WhatsApp:', error);
+    res.status(500).json({ error: 'Error al crear el pedido' });
+  }
+});
+
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en puerto ${PORT}`);
   console.log(`🔗 Admin disponible en: http://localhost:${PORT}/admin`);
   console.log(`🔗 Webhook disponible en: http://localhost:${PORT}/stripe/webhook`);
-  console.log(`🔗 Test endpoint disponible en: http://localhost:${PORT}/stripe/webhook-test`);
 });
