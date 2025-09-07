@@ -228,6 +228,10 @@ app.post('/create-checkout-session', async (req, res) => {
     // Crear el pedido inmediatamente en la base de datos
     try {
       console.log('🔍 userInfo recibido:', userInfo);
+      console.log('🔍 userInfo.email:', userInfo.email);
+      console.log('🔍 userInfo.userEmail:', userInfo.userEmail);
+      console.log('🔍 userInfo.uid:', userInfo.uid);
+      console.log('🔍 userInfo.userId:', userInfo.userId);
       
       const orderData = {
         orderId: orderId,
