@@ -74,6 +74,16 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../admin/admin.html'));
 });
 
+// Endpoint de prueba para webhook
+app.get('/stripe/webhook-test', (req, res) => {
+  console.log('🧪 Test webhook endpoint llamado');
+  res.json({ 
+    message: 'Webhook endpoint funcionando', 
+    timestamp: new Date().toISOString(),
+    webhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET
+  });
+});
+
 // Configurar el webhook de Stripe
 app.post('/stripe/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -241,5 +251,8 @@ app.post('/create-checkout-session', async (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
+  console.log(`🚀 Servidor escuchando en puerto ${PORT}`);
+  console.log(`🔗 Admin disponible en: http://localhost:${PORT}/admin`);
+  console.log(`🔗 Webhook disponible en: http://localhost:${PORT}/stripe/webhook`);
+  console.log(`🔗 Test endpoint disponible en: http://localhost:${PORT}/stripe/webhook-test`);
 });
