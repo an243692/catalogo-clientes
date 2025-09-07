@@ -227,10 +227,12 @@ app.post('/create-checkout-session', async (req, res) => {
 
     // Crear el pedido inmediatamente en la base de datos
     try {
+      console.log('🔍 userInfo recibido:', userInfo);
+      
       const orderData = {
         orderId: orderId,
         sessionId: session.id,
-        userEmail: userInfo.email,
+        userEmail: userInfo.email || userInfo.userEmail || 'unknown@email.com',
         totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
         status: 'pending',
         paymentStatus: 'pending',
@@ -240,6 +242,8 @@ app.post('/create-checkout-session', async (req, res) => {
         items: items,
         userInfo: userInfo
       };
+      
+      console.log('📋 orderData a guardar:', orderData);
 
       // Guardar en Realtime Database
       const db = admin.database();
@@ -453,10 +457,12 @@ app.post('/api/create-whatsapp-order', async (req, res) => {
   try {
     const { items, total, userEmail, userId, userInfo } = req.body;
     
+    console.log('🔍 WhatsApp order data recibido:', { items, total, userEmail, userId, userInfo });
+    
     const orderData = {
       orderId: `whatsapp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      userEmail: userEmail,
-      userId: userId,
+      userEmail: userEmail || userInfo?.email || 'unknown@email.com',
+      userId: userId || userInfo?.userId || 'unknown',
       items: items,
       total: total,
       paymentMethod: 'whatsapp',
@@ -466,6 +472,8 @@ app.post('/api/create-whatsapp-order', async (req, res) => {
       updatedAt: new Date().toISOString(),
       userInfo: userInfo
     };
+    
+    console.log('📋 WhatsApp orderData a guardar:', orderData);
 
     // Guardar en Realtime Database
     const db = admin.database();
@@ -497,25 +505,34 @@ app.post('/api/create-whatsapp-order', async (req, res) => {
 app.get('/api/orders/:userEmail', async (req, res) => {
   try {
     const { userEmail } = req.params;
+    console.log('🔍 Buscando pedidos para:', userEmail);
+    
     const db = admin.database();
     const ordersRef = db.ref('orders');
     
     const snapshot = await ordersRef.orderByChild('userEmail').equalTo(userEmail).once('value');
     const orders = [];
     
-    snapshot.forEach((childSnapshot) => {
-      orders.push({
-        id: childSnapshot.key,
-        ...childSnapshot.val()
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const orderData = childSnapshot.val();
+        // Verificar que el pedido tenga datos válidos
+        if (orderData && orderData.userEmail) {
+          orders.push({
+            id: childSnapshot.key,
+            ...orderData
+          });
+        }
       });
-    });
+    }
     
     // Ordenar por fecha de creación (más recientes primero)
     orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     
+    console.log(`✅ Encontrados ${orders.length} pedidos para ${userEmail}`);
     res.json(orders);
   } catch (error) {
-    console.error('Error al obtener pedidos:', error);
+    console.error('❌ Error al obtener pedidos:', error);
     res.status(500).json({ error: 'Error al obtener pedidos' });
   }
 });
