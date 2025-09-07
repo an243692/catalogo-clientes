@@ -233,6 +233,7 @@ app.post('/create-checkout-session', async (req, res) => {
         orderId: orderId,
         sessionId: session.id,
         userEmail: userInfo.email || userInfo.userEmail || 'unknown@email.com',
+        userId: userInfo.uid || userInfo.userId || 'unknown',
         totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
         status: 'pending',
         paymentStatus: 'pending',
@@ -240,7 +241,10 @@ app.post('/create-checkout-session', async (req, res) => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         items: items,
-        userInfo: userInfo
+        userInfo: userInfo,
+        // Agregar campos adicionales para compatibilidad
+        email: userInfo.email || userInfo.userEmail || 'unknown@email.com',
+        timestamp: Date.now()
       };
       
       console.log('📋 orderData a guardar:', orderData);
@@ -470,7 +474,10 @@ app.post('/api/create-whatsapp-order', async (req, res) => {
       paymentStatus: 'pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      userInfo: userInfo
+      userInfo: userInfo,
+      // Agregar campos adicionales para compatibilidad
+      email: userEmail || userInfo?.email || 'unknown@email.com',
+      timestamp: Date.now()
     };
     
     console.log('📋 WhatsApp orderData a guardar:', orderData);
@@ -510,24 +517,60 @@ app.get('/api/orders/:userEmail', async (req, res) => {
     const db = admin.database();
     const ordersRef = db.ref('orders');
     
-    const snapshot = await ordersRef.orderByChild('userEmail').equalTo(userEmail).once('value');
+    // Obtener todos los pedidos para buscar manualmente
+    const allSnapshot = await ordersRef.once('value');
+    console.log('🔍 DEBUG - Todos los pedidos en la base de datos:');
+    
     const orders = [];
     
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
+    if (allSnapshot.exists()) {
+      allSnapshot.forEach((childSnapshot) => {
         const orderData = childSnapshot.val();
-        // Verificar que el pedido tenga datos válidos
-        if (orderData && orderData.userEmail) {
+        console.log(`  - ${childSnapshot.key}: userEmail="${orderData?.userEmail}", email="${orderData?.email}", userInfo.email="${orderData?.userInfo?.email}"`);
+        
+        // Buscar por diferentes campos de email
+        let isUserOrder = false;
+        
+        // 1. Buscar por userEmail (pedidos nuevos)
+        if (orderData?.userEmail === userEmail) {
+          isUserOrder = true;
+        }
+        
+        // 2. Buscar por email directo (pedidos antiguos)
+        if (orderData?.email === userEmail) {
+          isUserOrder = true;
+        }
+        
+        // 3. Buscar por userInfo.email (pedidos con estructura userInfo)
+        if (orderData?.userInfo?.email === userEmail) {
+          isUserOrder = true;
+        }
+        
+        // 4. Buscar por userId si coincide con el usuario actual
+        if (orderData?.userId && orderData?.userInfo?.uid === orderData?.userId) {
+          // Verificar si el userId corresponde al email
+          if (orderData?.userInfo?.email === userEmail) {
+            isUserOrder = true;
+          }
+        }
+        
+        if (isUserOrder) {
           orders.push({
             id: childSnapshot.key,
             ...orderData
           });
         }
       });
+    } else {
+      console.log('  - No hay pedidos en la base de datos');
     }
     
     // Ordenar por fecha de creación (más recientes primero)
-    orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    orders.sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.timestamp || 0);
+      const dateB = new Date(b.createdAt || b.timestamp || 0);
+      return dateB - dateA;
+    });
     
     console.log(`✅ Encontrados ${orders.length} pedidos para ${userEmail}`);
     res.json(orders);
