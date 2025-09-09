@@ -250,13 +250,12 @@ app.post('/stripe/webhook', async (req, res) => {
 // Endpoint para crear sesión de checkout
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    const { items, orderId, userInfo } = req.body;
+    const { items, userInfo } = req.body;
 
     console.log('🔍 userInfo recibido:', userInfo);
     console.log('🔍 userInfo.email:', userInfo?.email);
     console.log('🔍 userInfo.uid:', userInfo?.uid);
     console.log('🔍 userInfo.fullName:', userInfo?.fullName);
-    console.log('🔍 userInfo.name:', userInfo?.name);
 
     const lineItems = items.map(item => {
       // Asegurarse de que el precio sea un número válido
@@ -279,13 +278,16 @@ app.post('/create-checkout-session', async (req, res) => {
       };
     });
 
+    // Generar ID único para el pedido
+    const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/cancel`,
-      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutos desde ahora (mínimo requerido por Stripe)
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 minutos desde ahora
       metadata: {
         orderId: orderId,
         userEmail: userInfo.email,
@@ -293,52 +295,38 @@ app.post('/create-checkout-session', async (req, res) => {
         totalAmount: items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0).toString()
       },
       customer_email: userInfo.email,
-      billing_address_collection: 'required', // Solicitar dirección de facturación
+      billing_address_collection: 'required',
       phone_number_collection: {
         enabled: true
       }
     });
 
-    // CREAR EL PEDIDO INMEDIATAMENTE EN REALTIME DATABASE (como el HTML original)
+    // CREAR EL PEDIDO INMEDIATAMENTE EN REALTIME DATABASE
     try {
-      // Validar y normalizar userInfo
-      let normalizedUserInfo = userInfo || {};
-      
-      // Si userInfo está vacío o no tiene email, intentar extraer del customer_email de la sesión
-      if (!normalizedUserInfo.email && session.customer_email) {
-        normalizedUserInfo.email = session.customer_email;
-        console.log('📧 Email extraído de la sesión de Stripe:', session.customer_email);
-      }
-      
-      // Si aún no hay email, usar un email por defecto
-      if (!normalizedUserInfo.email) {
-        normalizedUserInfo.email = 'unknown@email.com';
-        console.log('⚠️ Usando email por defecto ya que no se encontró email válido');
-      }
-      
       const totalAmount = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
       
       const orderData = {
         id: orderId,
         orderId: orderId,
         sessionId: session.id,
-        userEmail: normalizedUserInfo.email,
-        userId: normalizedUserInfo.uid || 'unknown',
+        userEmail: userInfo.email,
+        userId: userInfo.uid || 'unknown',
         total: totalAmount,
         totalAmount: totalAmount,
         status: 'pending',
         paymentStatus: 'pending',
-        paymentMethod: 'stripe',
+        paymentMethod: 'card',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         items: items,
-        userInfo: normalizedUserInfo,
-        email: normalizedUserInfo.email,
+        userInfo: userInfo,
+        email: userInfo.email,
         timestamp: Date.now(),
+        expiresAt: Date.now() + (30 * 60 * 1000), // 30 minutos
         paymentDetails: {
           amount: totalAmount,
           currency: 'mxn',
-          customerEmail: normalizedUserInfo.email,
+          customerEmail: userInfo.email,
           paymentMethod: 'card',
           paymentStatus: 'pending',
           status: 'pending',
@@ -348,13 +336,12 @@ app.post('/create-checkout-session', async (req, res) => {
       
       console.log('📋 orderData a guardar:', orderData);
 
-      // Guardar en Realtime Database
+      // Guardar en Realtime Database usando el orderId como clave
       const db = admin.database();
-      const ordersRef = db.ref('orders');
-      const newOrderRef = ordersRef.push();
-      await newOrderRef.set(orderData);
+      const orderRef = db.ref(`orders/${orderId.replace('order_', '')}`);
+      await orderRef.set(orderData);
       
-      console.log('✅ Pedido de Stripe creado en Realtime Database:', newOrderRef.key);
+      console.log('✅ Pedido de Stripe creado en Realtime Database:', orderId);
       
     } catch (orderError) {
       console.error('❌ Error al crear pedido de Stripe:', orderError);
