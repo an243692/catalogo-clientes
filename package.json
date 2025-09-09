@@ -1,42 +1,40 @@
 {
-  "name": "soft-duck-catalog",
-  "version": "1.0.0",
-  "description": "Catálogo de productos premium SOFT DUCK con React",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
-  },
+  "name": "catalogo-clientes-react",
+  "version": "0.1.0",
+  "private": true,
   "dependencies": {
-    "@stripe/react-stripe-js": "^4.0.0",
-    "@stripe/stripe-js": "^2.4.0",
-    "firebase": "^10.7.1",
-    "lucide-react": "^0.294.0",
+    "@testing-library/jest-dom": "^5.16.4",
+    "@testing-library/react": "^13.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "firebase": "^10.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.20.1"
+    "react-router-dom": "^6.8.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4"
   },
-  "devDependencies": {
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@vitejs/plugin-react": "^4.1.1",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "vite": "^5.0.0"
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
-  "keywords": [
-    "react",
-    "ecommerce",
-    "catalog",
-    "soft-duck",
-    "firebase",
-    "stripe"
-  ],
-  "author": "SOFT DUCK",
-  "license": "ISC"
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
 }
