@@ -1,0 +1,25 @@
+{
+  "name": "vahm-shop",
+  "version": "1.0.0",
+  "description": "E-commerce catalog for VAHM SHOP",
+  "main": "index.html",
+  "scripts": {
+    "dev": "live-server --port=3000 --open=/index.html",
+    "start": "live-server --port=3000 --open=/index.html",
+    "build": "echo 'Static site - no build needed'"
+  },
+  "keywords": [
+    "ecommerce",
+    "catalog",
+    "vahm-shop",
+    "firebase"
+  ],
+  "author": "VAHM SHOP",
+  "license": "ISC",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "mercadopago": "^1.5.16"
+  }
+}

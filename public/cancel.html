@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pago Cancelado - SOFT DUCK</title>
+    <meta name="description" content="Pago cancelado - Regresa a la tienda para continuar comprando.">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="user.css">
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js"></script>
+</head>
+<body>
+    <!-- Header simplificado -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <img src="softduck.png" alt="SOFT DUCK" class="logo">
+                <span class="brand-name">SOFT DUCK</span>
+            </div>
+            <div class="header-right">
+                <a href="index.html" class="nav-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver a la Tienda
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido principal -->
+    <main class="cancel-main">
+        <div class="cancel-container">
+            <div class="cancel-content">
+                <div class="cancel-icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                
+                <h1 class="cancel-title">Pago Cancelado</h1>
+                
+                <p class="cancel-message">
+                    No te preocupes, tu pago ha sido cancelado y no se ha realizado ningún cargo.
+                </p>
+                
+                <div class="cancel-info">
+                    <div class="info-item">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>El pedido pendiente está siendo eliminado automáticamente</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Tus productos siguen disponibles en el carrito</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>No se realizó ningún cargo y tus datos están seguros</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-redo"></i>
+                        <span>Puedes intentar el pago nuevamente cuando estés listo</span>
+                    </div>
+                </div>
+                
+                <div class="cancel-actions">
+                    <a href="index.html" class="btn-primary">
+                        <i class="fas fa-shopping-bag"></i>
+                        Continuar Comprando
+                    </a>
+                    <button class="btn-secondary" onclick="contactSupport()">
+                        <i class="fab fa-whatsapp"></i>
+                        Contactar Soporte
+                    </button>
+                </div>
+                
+                <div class="cancel-loading" id="cleanupStatus">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <span>Limpiando pedido pendiente...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer simplificado -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 SOFT DUCK. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+        import { 
+            getDatabase, 
+            ref, 
+            get, 
+            remove, 
+            query, 
+            orderByChild, 
+            equalTo 
+        } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLiPkISiuave91bqLg7WGKdqYrz376pCA",
+            authDomain: "catalogo-b6e67.firebaseapp.com",
+            projectId: "catalogo-b6e67",
+            storageBucket: "catalogo-b6e67.firebasestorage.app",
+            messagingSenderId: "832808330065",
+            appId: "1:832808330065:web:80469d16bfb9a360e46970",
+            measurementId: "G-3MZ71V4PPY",
+            databaseURL: "https://catalogo-b6e67-default-rtdb.firebaseio.com/"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const realtimeDb = getDatabase(app);
+
+        // Función mejorada para limpiar pedidos pendientes
+        async function cleanupPendingOrders() {
+            const cleanupStatus = document.getElementById('cleanupStatus');
+            console.log('🧹 Iniciando limpieza desde página de cancelación...');
+            
+            try {
+                // Obtener toda la información de la sesión
+                const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+                const sessionId = localStorage.getItem('pendingOrderSession');
+                const pendingOrderId = localStorage.getItem('pendingOrderId');
+                const sessionInfo = JSON.parse(localStorage.getItem('sessionInfo') || '{}');
+                
+                let deletedCount = 0;
+                
+                // Limpieza prioritaria: pedido específico de la sesión
+                if (sessionId && pendingOrderId) {
+                    try {
+                        const specificOrderRef = ref(realtimeDb, `orders/${pendingOrderId.replace('order_', '')}`);
+                        const snapshot = await get(specificOrderRef);
+                        
+                        if (snapshot.exists()) {
+                            const order = snapshot.val();
+                            if (order.status === 'pending' && order.sessionId === sessionId) {
+                                await remove(specificOrderRef);
+                                deletedCount++;
+                                console.log(`✅ Pedido específico eliminado: ${pendingOrderId}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error al eliminar pedido específico:', error);
+                    }
+                }
+                
+                // Limpieza adicional: buscar otros pedidos pendientes del usuario
+                if (userProfile.email) {
+                    const ordersRef = ref(realtimeDb, 'orders');
+                    const snapshot = await get(ordersRef);
+                    
+                    if (snapshot.exists()) {
+                        const allOrders = snapshot.val();
+                        const currentTime = Date.now();
+                        
+                        for (const [orderId, order] of Object.entries(allOrders)) {
+                            // Criterios más estrictos para la página de cancelación
+                            const shouldDelete = (
+                                order.status === 'pending' && 
+                                order.paymentMethod === 'card' &&
+                                order.userInfo?.email === userProfile.email &&
+                                (
+                                    (currentTime - order.timestamp > 1 * 60 * 1000) || // Más de 1 minuto
+                                    (order.sessionId === sessionId) ||
+                                    (order.expiresAt && currentTime > order.expiresAt)
+                                )
+                            );
+                            
+                            if (shouldDelete && orderId !== pendingOrderId?.replace('order_', '')) {
+                                try {
+                                    await remove(ref(realtimeDb, `orders/${orderId}`));
+                                    deletedCount++;
+                                    console.log(`🧹 Pedido adicional eliminado: ${orderId}`);
+                                } catch (error) {
+                                    console.error(`❌ Error al eliminar pedido ${orderId}:`, error);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Limpiar todo el localStorage relacionado
+                localStorage.removeItem('pendingOrderSession');
+                localStorage.removeItem('pendingOrderId');
+                localStorage.removeItem('pendingOrderTimestamp');
+                localStorage.removeItem('sessionInfo');
+                localStorage.removeItem('redirectingToStripe');
+                localStorage.removeItem('stripeRedirectTime');
+                localStorage.removeItem('pageAwayTime');
+                localStorage.removeItem('pageClosing');
+                
+                // Actualizar estado visual
+                if (deletedCount > 0) {
+                    updateCleanupStatus(`✅ ${deletedCount} pedido(s) cancelado(s) y eliminado(s)`, 'success');
+                    setTimeout(() => {
+                        updateCleanupStatus('✨ Limpieza completada - Todo listo para continuar comprando', 'success');
+                        setTimeout(hideCleanupStatus, 2000);
+                    }, 2000);
+                } else {
+                    updateCleanupStatus('✨ No se encontraron pedidos pendientes para limpiar', 'info');
+                    setTimeout(hideCleanupStatus, 1500);
+                }
+                
+                console.log(`🎯 Limpieza desde cancel.html completada: ${deletedCount} pedido(s) eliminado(s)`);
+                
+            } catch (error) {
+                console.error('❌ Error al limpiar pedidos pendientes:', error);
+                updateCleanupStatus('⚠️ Error al limpiar pedidos - Inténtalo de nuevo', 'error');
+                setTimeout(hideCleanupStatus, 4000);
+            }
+        }
+
+        function updateCleanupStatus(message, type) {
+            const cleanupStatus = document.getElementById('cleanupStatus');
+            const icon = cleanupStatus.querySelector('i');
+            const span = cleanupStatus.querySelector('span');
+            
+            // Actualizar icono según el tipo
+            icon.className = type === 'success' ? 'fas fa-check-circle' : 
+                           type === 'error' ? 'fas fa-exclamation-triangle' : 
+                           'fas fa-info-circle';
+            
+            // Actualizar texto
+            span.textContent = message;
+            
+            // Actualizar estilos
+            cleanupStatus.className = `cancel-loading ${type}`;
+        }
+
+        function hideCleanupStatus() {
+            const cleanupStatus = document.getElementById('cleanupStatus');
+            cleanupStatus.style.opacity = '0';
+            setTimeout(() => {
+                cleanupStatus.style.display = 'none';
+            }, 300);
+        }
+
+        // Función mejorada para contactar soporte con más información
+        window.contactSupport = function() {
+            const sessionInfo = JSON.parse(localStorage.getItem('sessionInfo') || '{}');
+            const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+            
+            let message = '🛒 *Ayuda con mi pedido cancelado*\n\n';
+            message += 'Hola, cancelé mi pago y necesito ayuda para continuar con mi compra.\n\n';
+            
+            if (userProfile.fullName) {
+                message += `👤 *Cliente:* ${userProfile.fullName}\n`;
+            }
+            if (userProfile.email) {
+                message += `📧 *Email:* ${userProfile.email}\n`;
+            }
+            if (sessionInfo.total) {
+                message += `💰 *Total del carrito:* $${sessionInfo.total.toFixed(2)}\n`;
+            }
+            if (sessionInfo.cartSize) {
+                message += `🛒 *Productos en carrito:* ${sessionInfo.cartSize}\n`;
+            }
+            
+            message += '\n🙏 ¿Podrían ayudarme a completar mi compra?';
+            
+            const encodedMessage = encodeURIComponent(message);
+            window.open(`https://wa.me/525627274791?text=${encodedMessage}`, '_blank');
+        };
+
+        // Ejecutar limpieza inmediata al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚫 Página de cancelación cargada - iniciando limpieza inmediata');
+            // Ejecutar limpieza más rápido en la página de cancelación
+            setTimeout(cleanupPendingOrders, 500);
+        });
+        
+        // Asegurar limpieza cuando la página se hace visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                console.log('👁️ Página de cancelación visible - verificando limpieza');
+                setTimeout(cleanupPendingOrders, 200);
+            }
+        });
+    </script>
+
+    <style>
+        .cancel-main {
+            min-height: calc(100vh - 120px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .cancel-container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .cancel-content {
+            background: hsl(var(--bg-card));
+            border-radius: var(--radius-xl);
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid hsl(var(--neutral) / 0.1);
+        }
+
+        .cancel-icon {
+            font-size: 4rem;
+            color: #e74c3c;
+            margin-bottom: 1.5rem;
+        }
+
+        .cancel-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: hsl(var(--text-primary));
+            margin-bottom: 1rem;
+        }
+
+        .cancel-message {
+            font-size: 1.1rem;
+            color: hsl(var(--text-secondary));
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .cancel-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius-md);
+            border-left: 4px solid hsl(var(--primary));
+        }
+
+        .info-item i {
+            color: hsl(var(--primary));
+            min-width: 1.25rem;
+        }
+
+        .cancel-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary, .btn-secondary {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-normal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            min-width: 180px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: hsl(var(--text-white));
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-primary));
+            border: 2px solid hsl(var(--neutral) / 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: hsl(var(--primary) / 0.1);
+            border-color: hsl(var(--primary));
+            color: hsl(var(--primary));
+        }
+
+        .cancel-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius-md);
+            transition: all 0.3s ease;
+        }
+
+        .cancel-loading.success {
+            background: hsla(142, 55%, 40%, 0.1);
+            border: 1px solid hsl(var(--success));
+            color: hsl(var(--success));
+        }
+
+        .cancel-loading.error {
+            background: hsla(0, 70%, 55%, 0.1);
+            border: 1px solid hsl(var(--danger));
+            color: hsl(var(--danger));
+        }
+
+        .cancel-loading.info {
+            background: hsla(210, 85%, 60%, 0.1);
+            border: 1px solid hsl(var(--info));
+            color: hsl(var(--info));
+        }
+
+        @media (max-width: 768px) {
+            .cancel-content {
+                padding: 2rem 1.5rem;
+            }
+            
+            .cancel-title {
+                font-size: 1.5rem;
+            }
+            
+            .cancel-actions {
+                flex-direction: column;
+            }
+            
+            .btn-primary, .btn-secondary {
+                min-width: auto;
+            }
+        }
+    </style>
+</body>
+</html>

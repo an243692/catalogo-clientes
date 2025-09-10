@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOFT DUCK | Catálogo Premium</title>
+    <meta name="description" content="Catálogo de productos premium con pagos seguros por tarjeta.">
+    <meta name="robots" content="index, follow">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="user.css">
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+    <!-- Modern Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="nav-brand">
+                <img src="softduck.png" alt="SOFT DUCK" class="logo-image">
+                <div class="brand-text">
+                    <span class="brand-name">SOFT DUCK</span>
+                    <span class="brand-tagline">Catálogo Premium</span>
+                </div>
+            </div>
+            <!-- Centered Search Bar -->
+            <div class="search-section">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="¿Qué estás buscando?" class="search-input-main">
+                </div>
+            </div>
+            <!-- Contact Info -->
+            <div class="header-contact">
+                <div class="contact-info">
+                    <i class="fas fa-phone"></i>
+                    <span>5627274791</span>
+                </div>
+            </div>
+            <!-- Auth Section -->
+            <div class="nav-links">
+                <div id="authSection">
+                    <button id="loginBtn" class="auth-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <span class="btn-text">Iniciar Sesión</span>
+                    </button>
+                </div>
+                <div id="userSection" style="display: none;">
+                    <div class="user-info">
+                        <i class="fas fa-user-check"></i>
+                        <span id="userName"></span>
+                    </div>
+                    <button id="historyBtn" class="nav-btn">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <span class="btn-text">Historial</span>
+                    </button>
+                    <button id="logoutBtn" class="nav-btn logout">
+                        <i class="fas fa-right-from-bracket"></i>
+                        <span class="btn-text">Salir</span>
+                    </button>
+                </div>
+                <button id="cartButton" class="cart-btn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-count" id="cartCount">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1 class="hero-title">Descubre productos de <span class="title-highlight">calidad premium</span></h1>
+                <p class="hero-subtitle">Encuentra exactamente lo que necesitas con la mejor calidad y precios competitivos</p>
+                
+                <div class="payment-badges">
+                    <div class="payment-badge">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Pago Seguro</span>
+                    </div>
+                    <div class="payment-badge">
+                        <i class="fas fa-shipping-fast"></i>
+                        <span>Envío Rápido</span>
+                    </div>
+                </div>
+
+                <div class="hero-actions">
+                    <button class="hero-cta primary" onclick="document.querySelector('.products-section').scrollIntoView({behavior: 'smooth'})">
+                        <i class="fas fa-search"></i>
+                        <span>Explorar Catálogo</span>
+                    </button>
+                    <button class="hero-cta secondary" onclick="window.open('https://wa.me/525627274791?text=¡Hola!%20Me%20interesa%20conocer%20más%20sobre%20sus%20productos%20de%20SOFT%20DUCK', '_blank')">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Contactar</span>
+                    </button>
+                </div>
+            </div>
+            <div class="hero-logo">
+                <div class="logo-container">
+                    <div class="logo-circle">
+                        <img src="softduck.png" alt="SOFT DUCK" class="hero-logo-image">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="features-container">
+            <div class="features-carousel" id="featuresCarousel">
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="feature-text">
+                        <h3>Pagos Seguros</h3>
+                        <p>Tarjetas de crédito/débito</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon stripe-icon">
+                        <i class="fab fa-stripe"></i>
+                    </div>
+                    <div class="feature-text">
+                        <h3>Stripe Payments</h3>
+                        <p>Procesamiento seguro</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <div class="feature-text">
+                        <h3>Envíos Gratis</h3>
+                        <p>En pedidos seleccionados</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon whatsapp-icon">
+                        <i class="fab fa-whatsapp"></i>
+                    </div>
+                    <div class="feature-text">
+                        <h3>Pedidos WhatsApp</h3>
+                        <p>Atención personalizada</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="feature-text">
+                        <h3>Compra Segura</h3>
+                        <p>SSL certificado</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <div class="feature-text">
+                        <h3>Entregas Rápidas</h3>
+                        <p>24-48 horas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Section -->
+    <section class="main-content">
+        <div class="filters-overlay" id="filtersOverlay"></div>
+        <div class="main-content-container">
+            <!-- Sidebar Filters -->
+            <aside class="filters-sidebar">
+                <div class="filters-header">
+                    <h3>Filtros</h3>
+                    <button class="clear-filters-btn" id="clearFiltersBtn">
+                        <i class="fas fa-times"></i> Limpiar Filtros
+                    </button>
+                </div>
+                
+                <!-- Sort By -->
+                <div class="filter-section">
+                    <div class="filter-section-header">
+                        <h4>Ordenar Por</h4>
+                        <i class="fas fa-chevron-down filter-toggle"></i>
+                    </div>
+                    <div class="filter-section-content">
+                        <select id="sortFilter" class="filter-select">
+                            <option value="">Recomendado</option>
+                            <option value="name-asc">Nombre A-Z</option>
+                            <option value="name-desc">Nombre Z-A</option>
+                            <option value="price-asc">Precio Menor a Mayor</option>
+                            <option value="price-desc">Precio Mayor a Menor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Price Range -->
+                <div class="filter-section">
+                    <div class="filter-section-header">
+                        <h4>Precio</h4>
+                        <i class="fas fa-chevron-down filter-toggle"></i>
+                    </div>
+                    <div class="filter-section-content">
+                        <div class="price-range">
+                            <input type="range" id="priceMin" min="0" max="10000" value="0" class="price-slider">
+                            <input type="range" id="priceMax" min="0" max="10000" value="10000" class="price-slider">
+                            <div class="price-display">
+                                <span id="priceMinDisplay">$0</span> - <span id="priceMaxDisplay">$10,000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category -->
+                <div class="filter-section expanded">
+                    <div class="filter-section-header">
+                        <h4>Categoría</h4>
+                        <i class="fas fa-chevron-up filter-toggle"></i>
+                    </div>
+                    <div class="filter-section-content">
+                        <div class="category-filters" id="categoryFilters">
+                            <!-- Categories will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Type -->
+                <div class="filter-section">
+                    <div class="filter-section-header">
+                        <h4>Tipo De Producto</h4>
+                        <i class="fas fa-chevron-down filter-toggle"></i>
+                    </div>
+                    <div class="filter-section-content">
+                        <div class="checkbox-filters">
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="individual">
+                                <span class="checkmark"></span>
+                                Individual
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" value="wholesale">
+                                <span class="checkmark"></span>
+                                Mayoreo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- Color -->
+                <div class="filter-section">
+                    <div class="filter-section-header">
+                        <h4>Color</h4>
+                        <i class="fas fa-chevron-down filter-toggle"></i>
+                    </div>
+                    <div class="filter-section-content">
+                        <div class="color-filters">
+                            <div class="color-option" data-color="negro" style="background-color: #000;"></div>
+                            <div class="color-option" data-color="blanco" style="background-color: #fff; border: 1px solid #ddd;"></div>
+                            <div class="color-option" data-color="rojo" style="background-color: #ff0000;"></div>
+                            <div class="color-option" data-color="azul" style="background-color: #0000ff;"></div>
+                            <div class="color-option" data-color="verde" style="background-color: #00ff00;"></div>
+                            <div class="color-option" data-color="amarillo" style="background-color: #ffff00;"></div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </aside>
+
+            <!-- Products Area -->
+            <main class="products-main">
+                <button class="filters-toggle" id="filtersToggle" style="display: none;">
+                    <i class="fas fa-filter"></i>
+                </button>
+                <div class="products-header">
+                    <div class="breadcrumb">
+                        <span>MARCAS</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="currentBrand">SOFT DUCK</span>
+                    </div>
+                    <h1 class="brand-title">SOFT DUCK</h1>
+                    <div class="products-count">
+                        <span id="productsCount">0 Artículos</span>
+                    </div>
+                </div>
+                
+                <div class="products-grid" id="productsGrid">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <h3>Cargando productos</h3>
+                        <p>Preparando nuestro catálogo para ti...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </section>
+
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="product-modal">
+        <div class="product-modal-content">
+            <button class="close-modal" id="closeProductModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="product-modal-body">
+                <div class="product-modal-image">
+                    <div class="modal-image-carousel" id="modalImageCarousel">
+                        <div class="modal-carousel-container" id="modalCarouselContainer">
+                            <!-- Images will be inserted here -->
+                        </div>
+                        <div class="modal-carousel-indicators" id="modalCarouselIndicators">
+                            <!-- Indicators will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="product-modal-info">
+                    <div class="product-breadcrumb" id="productBreadcrumb">
+                        <span>Inicio</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="breadcrumbCategory">Categoría</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="breadcrumbProduct">Producto</span>
+                    </div>
+                    <h1 class="modal-product-name" id="modalProductName"></h1>
+                    <div class="modal-product-brand">
+                        Marca: <span id="modalProductBrand">SOFT DUCK</span>
+                    </div>
+                    <div class="modal-product-sku">
+                        SKU: <span id="modalProductSku"></span>
+                    </div>
+                    <div class="modal-product-stock" id="modalProductStock"></div>
+                    <div class="modal-product-description" id="modalProductDescription"></div>
+                    <div class="modal-product-prices">
+                        <div class="modal-price-item individual-price">
+                            <span class="modal-price-label">Precio Individual</span>
+                            <span class="modal-price-value" id="modalIndividualPrice"></span>
+                        </div>
+                        <div class="modal-price-item wholesale-price">
+                            <span class="modal-price-label">Precio Mayoreo <span id="modalWholesaleQuantity">(4+)</span></span>
+                            <span class="modal-price-value" id="modalWholesalePrice"></span>
+                        </div>
+                    </div>
+                    <div class="modal-quantity-section">
+                        <label>Cantidad</label>
+                        <div class="modal-quantity-controls">
+                            <button class="quantity-btn" id="modalDecreaseBtn">-</button>
+                            <input type="number" class="quantity-input" id="modalQuantityInput" value="1" min="1">
+                            <button class="quantity-btn" id="modalIncreaseBtn">+</button>
+                        </div>
+                    </div>
+                    <div class="modal-action-buttons">
+                        <button class="modal-add-cart" id="modalAddToCart">
+                            <i class="fas fa-cart-plus"></i>
+                            Agregar al carrito
+                        </button>
+                        <button class="modal-view-cart" id="modalViewCart">
+                            <i class="fas fa-shopping-cart"></i>
+                            Ver carrito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal">
+        <div class="auth-modal-content">
+            <button class="close-modal" id="closeAuthModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="auth-header">
+                <h2>Bienvenido a SOFT DUCK</h2>
+                <p>Únete a nuestra comunidad y disfruta de ofertas exclusivas</p>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Iniciar Sesión</button>
+                <button class="auth-tab" data-tab="register">Registrarse</button>
+            </div>
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                    <label for="loginEmail">Correo Electrónico</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="loginEmail" placeholder="tu@email.com" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="loginPassword" placeholder="Tu contraseña" required>
+                        <button type="button" class="password-toggle" id="loginPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="auth-submit">
+                    <span>Iniciar Sesión</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form">
+                <div class="form-group">
+                    <label for="registerName">Nombre Completo</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="registerName" placeholder="Tu nombre completo" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerPhone">Número de Teléfono</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-phone"></i>
+                        <input type="tel" id="registerPhone" placeholder="Tu número de teléfono" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerEmail">Correo Electrónico</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="registerEmail" placeholder="tu@email.com" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="registerPassword" placeholder="Crea una contraseña" required>
+                        <button type="button" class="password-toggle" id="registerPasswordToggle">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="registerLocation">Ubicación</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <input type="text" id="registerLocation" placeholder="Tu ciudad o ubicación" required>
+                    </div>
+                </div>
+                <button type="submit" class="auth-submit">
+                    <span>Crear Cuenta</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div id="cartModal" class="cart-modal">
+        <div class="cart-modal-content">
+            <div class="cart-header">
+                <h2><i class="fas fa-shopping-bag"></i> Mi Carrito</h2>
+                <button class="close-modal" id="closeCartModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="cartItems"></div>
+            <div class="cart-summary">
+                <div class="cart-quantity-info">
+                    <span id="cartTotalItems">0 productos</span>
+                </div>
+                <div class="cart-total">
+                    <h3>Total del Pedido</h3>
+                    <div class="cart-total-amount" id="cartTotal">$0.00</div>
+                </div>
+            </div>
+            <div class="cart-actions">
+                <button class="clear-cart" id="clearCart">
+                    <i class="fas fa-trash-can"></i> Vaciar Carrito
+                </button>
+                <button class="checkout-btn whatsapp-checkout" id="checkoutBtn">
+                    <i class="fab fa-whatsapp"></i> Ordenar por WhatsApp
+                </button>
+                <button id="checkout-btn" class="btn-stripe">
+                    <div class="stripe-button-content">
+                        <div class="stripe-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="stripe-text">
+                            <div class="stripe-title">Pagar con</div>
+                            <div class="stripe-brand">Tarjeta</div>
+                        </div>
+                        <div class="stripe-secure">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery Modal -->
+    <div id="deliveryModal" class="delivery-modal">
+        <div class="delivery-modal-content">
+            <button class="close-modal" id="closeDeliveryModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2><i class="fas fa-truck-fast"></i> Opciones de Entrega</h2>
+            <form id="deliveryForm" class="delivery-form">
+                <div class="form-group">
+                    <label>Tipo de Entrega</label>
+                    <div class="delivery-options">
+                        <label>
+                            <input type="radio" name="deliveryType" value="pickup" checked>
+                            <span class="radio-custom"></span> Recoger en Tienda
+                        </label>
+                        <label>
+                            <input type="radio" name="deliveryType" value="delivery">
+                            <span class="radio-custom"></span> Envío a Domicilio
+                        </label>
+                    </div>
+                </div>
+                <div id="pickupFields" class="delivery-fields">
+                    <div class="form-group">
+                        <label for="pickupStore">Tienda para Recoger</label>
+                        <select id="pickupStore" required>
+                            <option value="">Selecciona una tienda</option>
+                            <option value="Tienda Centro">Tienda Las Cruces No 40, Col. Centro</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="deliveryFields" class="delivery-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="deliveryStreet">Calle</label>
+                        <input type="text" id="deliveryStreet" placeholder="Calle y número">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryCity">Ciudad</label>
+                        <input type="text" id="deliveryCity" placeholder="Ciudad">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryState">Estado</label>
+                        <input type="text" id="deliveryState" placeholder="Estado">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryZip">Código Postal</label>
+                        <input type="text" id="deliveryZip" placeholder="Código postal">
+                    </div>
+                    <div class="form-group">
+                        <label for="deliveryInstructions">Instrucciones de Entrega</label>
+                        <textarea id="deliveryInstructions" placeholder="Instrucciones adicionales (opcional)"></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="delivery-submit">Confirmar Entrega</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="history-modal">
+        <div class="history-modal-content">
+            <div class="history-header">
+                <h2><i class="fas fa-clock-rotate-left"></i> Historial de Pedidos</h2>
+                <button class="close-modal" id="closeHistoryModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="historyItems"></div>
+        </div>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="editOrderModal" class="edit-order-modal">
+        <div class="edit-order-modal-content">
+            <div class="edit-order-header">
+                <h2><i class="fas fa-pen-to-square"></i> Editar Pedido</h2>
+                <button class="close-modal" id="closeEditOrderModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="edit-order-tabs">
+                <button class="edit-tab active" data-tab="currentItems">Productos Actuales</button>
+                <button class="edit-tab" data-tab="addProducts">Agregar del Catálogo</button>
+            </div>
+            <div id="currentItemsTab" class="edit-tab-content active">
+                <div id="currentOrderItems"></div>
+            </div>
+            <div id="addProductsTab" class="edit-tab-content">
+                <div class="catalog-search">
+                    <input type="text" id="catalogSearch" placeholder="Buscar productos...">
+                </div>
+                <div id="catalogProducts"></div>
+            </div>
+            <div class="edit-order-summary">
+                <div class="edit-total">
+                    <strong>Nuevo Total: <span id="editOrderTotal">$0.00</span></strong>
+                </div>
+                <div class="edit-actions">
+                    <button class="cancel-edit" id="cancelEdit">Cancelar</button>
+                    <button class="save-edit" id="saveEdit">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp Floating Button -->
+    <div class="whatsapp-float">
+        <a href="https://wa.me/525627274791?text=¡Hola!%20Me%20interesa%20conocer%20más%20sobre%20sus%20productos%20de%20SOFT%20DUCK" class="whatsapp-button" target="_blank" rel="noopener noreferrer" title="Contactar por WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <div class="footer-logo">
+                    <img src="softduck.png" alt="SOFT DUCK" class="footer-logo-img">
+                    <h3>SOFT DUCK</h3>
+                </div>
+                <p>Tu tienda de confianza con productos premium y experiencia excepcional</p>
+                <div class="payment-methods">
+                    <div class="payment-method">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Visa & Mastercard</span>
+                    </div>
+                    <div class="payment-method">
+                        <i class="fas fa-university"></i>
+                        <span>Tarjetas de Débito</span>
+                    </div>
+                    <div class="payment-method">
+                        <i class="fab fa-stripe"></i>
+                        <span>Pagos Seguros con Stripe</span>
+                    </div>
+                    <div class="payment-method">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Pagos Móviles</span>
+                    </div>
+                    <div class="payment-method">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>Pedidos por WhatsApp</span>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h4><i class="fas fa-link"></i> Enlaces Rápidos</h4>
+                <ul>
+                    <li><a href="#"><i class="fas fa-home"></i> Inicio</a></li>
+                    <li><a href="#"><i class="fas fa-box"></i> Productos</a></li>
+                    <li><a href="#"><i class="fas fa-phone"></i> Contacto</a></li>
+                    <li><a href="#"><i class="fas fa-shield-alt"></i> Política de Privacidad</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4><i class="fas fa-headset"></i> Contacto</h4>
+                <div class="contact-item">
+                    <i class="fas fa-phone"></i>
+                    <span>+52 56 2727 4791</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>vhjocar@gmail.com</span>
+                </div>
+                <div class="contact-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Las Cruces No 40, Col. Centro</span>
+                </div>
+                <div class="social-links">
+                    <a href="#" class="social-link"><i class="fab fa-facebook"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <p>© 2025 SOFT DUCK. Todos los derechos reservados.</p>
+                <div class="security-badges">
+                    <div class="security-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Pagos Seguros</span>
+                    </div>
+                    <div class="security-badge">
+                        <i class="fas fa-lock"></i>
+                        <span>SSL Certificado</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script type="module" src="user.js"></script>
+</body>
+</html>
