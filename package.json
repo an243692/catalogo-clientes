@@ -1,27 +1,28 @@
 {
-  "name": "catalogo-clientes",
+  "name": "catalogo-clientes-react",
   "version": "1.0.0",
-  "description": "Catálogo de productos con pagos Stripe",
-  "main": "backend/server.js",
+  "description": "Catálogo de productos con pagos Stripe - React Frontend",
+  "type": "module",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js",
+    "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite preview --port 3000"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "helmet": "^7.0.0",
-    "express-rate-limit": "^6.7.0",
-    "firebase-admin": "^11.8.0",
-    "stripe": "^12.9.0",
-    "dotenv": "^16.0.3"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1",
+    "firebase": "^9.17.1",
+    "@stripe/stripe-js": "^1.35.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "@types/react": "^18.0.27",
+    "@types/react-dom": "^18.0.10",
+    "@vitejs/plugin-react": "^3.1.0",
+    "vite": "^4.1.0"
   },
-  "keywords": ["ecommerce", "stripe", "firebase", "catalogo"],
+  "keywords": ["react", "ecommerce", "stripe", "firebase", "catalogo"],
   "author": "SOFT DUCK",
   "license": "MIT"
 }
